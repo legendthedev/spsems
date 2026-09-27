@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
-import { Lock, User, LogIn, UserPlus, GraduationCap, Users, ShieldCheck } from 'lucide-react';
+import { Lock, User, LogIn, GraduationCap, Users, ShieldCheck } from 'lucide-react';
 
 export default function LandingPage() {
   const { login }       = useAuth();
