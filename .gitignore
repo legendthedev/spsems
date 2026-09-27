@@ -46,18 +46,5 @@ frontend/build/
 .DS_Store
 Thumbs.db
 
-README.md
-HOSTING_README.md
-
-
+# Dev artifacts
 ml-service/.gstack/
-ml-service/models/
-
-
-uploads/
-
-frontend/vercel.json
-frontend/package.json
-frontend/package-lock.json
-frontend/.env.example
-
