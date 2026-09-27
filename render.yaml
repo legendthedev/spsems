@@ -1,0 +1,41 @@
+services:
+  # 1. ML Microservice
+  - type: web
+    name: spsems-ml-service
+    env: python
+    region: oregon
+    plan: free
+    rootDir: ml-service
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -w 1 -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+
+  # 2. Main FastAPI Backend
+  - type: web
+    name: spsems-backend
+    env: python
+    region: oregon
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -w 2 -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_EXPIRE_HOURS
+        value: "24"
+      - key: ADMIN_REG_CODE
+        value: KWASU-HOD-2026
+      - key: ML_SERVICE_URL
+        fromService:
+          type: web
+          name: spsems-ml-service
+          property: host
+      - key: FRONTEND_URL
+        value: https://*.vercel.app
