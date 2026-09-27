@@ -154,7 +154,10 @@ async def submit_proposal_form(
          "keywords": keywords or "", "kw": kw_vector, "dup": dup_score},
     )
     db.commit()
-    project_id = result.lastrowid
+    project_id = getattr(result, "lastrowid", None)
+    if not project_id:
+        row = db.execute(text("SELECT project_id FROM projects WHERE student_id=:sid ORDER BY project_id DESC LIMIT 1"), {"sid": st.student_id}).fetchone()
+        project_id = row[0] if row else None
 
     db.execute(
         text("UPDATE students SET project_id=:pid WHERE student_id=:sid"),
@@ -308,7 +311,10 @@ def submit_proposal(
         },
     )
     db.commit()
-    project_id = result.lastrowid
+    project_id = getattr(result, "lastrowid", None)
+    if not project_id:
+        row = db.execute(text("SELECT project_id FROM projects WHERE student_id=:student_id ORDER BY project_id DESC LIMIT 1"), {"student_id": st.student_id}).fetchone()
+        project_id = row[0] if row else None
 
     db.execute(
         text("UPDATE students SET project_id=:project_id WHERE student_id=:student_id"),

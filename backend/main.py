@@ -50,6 +50,7 @@ app.add_middleware(
 
 os.makedirs(settings.upload_dir, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
+app.mount("/api/uploads", StaticFiles(directory=settings.upload_dir), name="api_uploads")
 
 def _migrate_db():
     if os.getenv("DATABASE_URL"):
@@ -74,16 +75,27 @@ def _migrate_db():
 
 
 API = "/api"
-app.include_router(auth_router,       prefix=API)
-app.include_router(register_router,   prefix=API)
-app.include_router(projects_router,   prefix=API)
-app.include_router(supervisor_router, prefix=API)
-app.include_router(admin_router,      prefix=API)
-app.include_router(alerts_router,     prefix=API)
-app.include_router(messages_router,   prefix=API)
+routers = [
+    auth_router,
+    register_router,
+    projects_router,
+    supervisor_router,
+    admin_router,
+    alerts_router,
+    messages_router,
+]
+for r in routers:
+    app.include_router(r, prefix=API)
+    app.include_router(r)
+
+
+@app.get("/", tags=["System"])
+def root():
+    return {"status": "ok", "service": "KWASU SPSEMS API", "version": "2.0.0"}
 
 
 @app.get("/health", tags=["System"])
+@app.get("/api/health", tags=["System"])
 def health():
     return {"status": "ok", "service": "KWASU SPSEMS API", "version": "2.0.0"}
 

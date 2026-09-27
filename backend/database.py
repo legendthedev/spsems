@@ -45,8 +45,11 @@ def test_connection() -> bool:
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        print(f"  SQLite connected -> {_db_file}")
+        if os.getenv("DATABASE_URL"):
+            print("  Database connected -> Remote PostgreSQL")
+        else:
+            print(f"  SQLite connected -> {_db_file}")
         return True
-    except OperationalError as e:
-        print(f"  SQLite connection failed: {e}", file=sys.stderr)
+    except Exception as e:
+        print(f"  Database connection failed: {e}", file=sys.stderr)
         return False

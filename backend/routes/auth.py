@@ -169,7 +169,10 @@ def _do_register(body, db: Session) -> int:
         },
     )
     db.commit()
-    user_id = result.lastrowid
+    user_id = getattr(result, "lastrowid", None)
+    if not user_id:
+        row = db.execute(text("SELECT user_id FROM users WHERE username=:username"), {"username": body.username}).fetchone()
+        user_id = row[0] if row else None
 
     if body.role == "supervisor":
         import json
