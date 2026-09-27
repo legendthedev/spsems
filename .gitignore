@@ -61,5 +61,3 @@ frontend/package.json
 frontend/package-lock.json
 frontend/.env.example
 
-backend/requirements.txt
-backend/Procfile
