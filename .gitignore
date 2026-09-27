@@ -50,7 +50,7 @@ README.md
 requirements.txt
 HOSTING_README.md
 
-ml-service/requirements.txt
+
 ml-service/.gstack/
 ml-service/models/
 ml-service/Procfile
