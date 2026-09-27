@@ -1,0 +1,166 @@
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { BookOpen } from 'lucide-react';
+import api from '../services/api';
+import toast from 'react-hot-toast';
+
+const DEPARTMENTS = [
+  'Computer Science', 'Software Engineering', 'Information Technology',
+  'Cyber Security', 'Data Science', 'Electrical Engineering',
+  'Mechanical Engineering', 'Mathematics', 'Physics',
+];
+
+export default function RegisterLecturerPage() {
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [form, setForm] = useState({
+    full_name: '', username: '', email: '', phone: '',
+    department: '', expertise_areas: '', bio: '',
+    password: '', confirm_password: '',
+  });
+
+  const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (form.password !== form.confirm_password) {
+      toast.error('Passwords do not match.');
+      return;
+    }
+    setBusy(true);
+    try {
+      await api.post('/auth/register-public', {
+        role:            'supervisor',
+        full_name:       form.full_name,
+        username:        form.username,
+        email:           form.email,
+        password:        form.password,
+        phone:           form.phone || undefined,
+        department:      form.department || 'Computer Science',
+        expertise_areas: form.expertise_areas || undefined,
+        bio:             form.bio || undefined,
+      });
+      toast.success('Registration submitted. Awaiting admin approval before you can log in.');
+      navigate('/login');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Registration failed.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={s.page}>
+      <div style={s.card}>
+        <div style={s.header}>
+          <img src="/kwasu.png" alt="KWASU" style={s.logoImg} />
+          <div style={s.titleRow}>
+            <BookOpen size={20} color="#16a34a" />
+            <h2 style={s.title}>Lecturer Registration</h2>
+          </div>
+          <p style={s.subtitle}>Register as a Supervisor / Lecturer</p>
+          <div style={s.divider} />
+        </div>
+
+        <form onSubmit={handleSubmit} style={s.form}>
+          <Row>
+            <Field label="Full Name *"  value={form.full_name}  onChange={v => set('full_name', v)}  placeholder="Dr. John Doe" required />
+            <Field label="Username *"   value={form.username}   onChange={v => set('username', v)}   placeholder="Choose a username" required />
+          </Row>
+          <Row>
+            <Field label="Email *" type="email" value={form.email} onChange={v => set('email', v)} placeholder="you@kwasu.edu.ng" required />
+            <Field label="Phone"   type="tel"   value={form.phone} onChange={v => set('phone', v)} placeholder="Optional" />
+          </Row>
+          <Row>
+            <div style={{ flex: 1 }}>
+              <label style={s.label}>Department *</label>
+              <select style={s.input} value={form.department} onChange={e => set('department', e.target.value)} required>
+                <option value="">Select department</option>
+                {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <Field label="Expertise Areas" value={form.expertise_areas} onChange={v => set('expertise_areas', v)} placeholder="e.g. AI, Machine Learning" />
+          </Row>
+          <div>
+            <label style={s.label}>Bio (optional)</label>
+            <textarea style={{ ...s.input, height: 70, resize: 'vertical' }} value={form.bio} onChange={e => set('bio', e.target.value)} placeholder="Brief professional summary" />
+          </div>
+          <Row>
+            <Field label="Password *"         type="password" value={form.password}         onChange={v => set('password', v)}         placeholder="Min 6 characters" required />
+            <Field label="Confirm Password *"  type="password" value={form.confirm_password} onChange={v => set('confirm_password', v)} placeholder="Repeat password"   required />
+          </Row>
+
+          <div style={s.notice}>
+            After submitting, your account will be reviewed by the HOD / Admin before you can log in.
+          </div>
+
+          <button type="submit" style={busy ? { ...s.btn, opacity: 0.6 } : s.btn} disabled={busy}>
+            {busy ? 'Submitting...' : 'Create Lecturer Account'}
+          </button>
+        </form>
+
+        <p style={s.footer}>
+          Already have an account?{' '}<Link to="/login" style={s.link}>Sign in</Link>
+          {'  ·  '}
+          <Link to="/register" style={s.link}>Student registration</Link>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function Row({ children }) {
+  return <div style={{ display: 'flex', gap: 12 }}>{children}</div>;
+}
+
+function Field({ label, type = 'text', value, onChange, placeholder, required }) {
+  return (
+    <div style={{ flex: 1 }}>
+      <label style={s.label}>{label}</label>
+      <input
+        style={s.input}
+        type={type}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        required={required}
+      />
+    </div>
+  );
+}
+
+const s = {
+  page: {
+    minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    background: 'linear-gradient(135deg, #050505 0%, #0d2010 40%, #16a34a 70%, #050505 100%)',
+    padding: '24px 16px',
+  },
+  card: {
+    background: 'rgba(15,15,15,0.97)', borderRadius: 16, padding: '36px 32px',
+    width: '100%', maxWidth: 700,
+    boxShadow: '0 0 0 1px rgba(22,163,74,0.2), 0 24px 64px rgba(0,0,0,0.6)',
+  },
+  header:   { textAlign: 'center', marginBottom: 24 },
+  logoImg:  { height: 46, display: 'block', margin: '0 auto 14px' },
+  titleRow: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 6 },
+  title:    { fontSize: 22, fontWeight: 800, color: '#ffffff', letterSpacing: '-0.3px' },
+  subtitle: { fontSize: 12, color: '#6b7280' },
+  divider:  { width: 32, height: 2, background: '#16a34a', margin: '14px auto 0', borderRadius: 2 },
+  form:     { display: 'flex', flexDirection: 'column', gap: 14 },
+  label:    { display: 'block', fontSize: 11, fontWeight: 600, color: '#9ca3af', marginBottom: 5, letterSpacing: '0.3px', textTransform: 'uppercase' },
+  input: {
+    width: '100%', padding: '10px 12px',
+    background: '#0f0f0f', border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 7, fontSize: 13, outline: 'none', color: '#fff', boxSizing: 'border-box',
+  },
+  btn: {
+    marginTop: 4, padding: '12px 0', background: '#16a34a', color: '#fff',
+    border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 14, cursor: 'pointer',
+  },
+  notice: {
+    background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.2)',
+    borderRadius: 8, padding: '10px 14px', fontSize: 12, color: '#4ade80',
+  },
+  footer: { textAlign: 'center', marginTop: 18, fontSize: 12, color: '#6b7280' },
+  link:   { color: '#22c55e', fontWeight: 600, textDecoration: 'none' },
+};
