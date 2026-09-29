@@ -11,6 +11,7 @@ from slowapi.middleware import SlowAPIMiddleware
 import sqlite3 as _sqlite3
 from config import get_settings
 from database import test_connection
+from init_db import auto_init_database
 from routes.auth       import router as auth_router
 from routes.register   import router as register_router
 from routes.projects   import router as projects_router
@@ -52,28 +53,6 @@ os.makedirs(settings.upload_dir, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
 app.mount("/api/uploads", StaticFiles(directory=settings.upload_dir), name="api_uploads")
 
-def _migrate_db():
-    if os.getenv("DATABASE_URL"):
-        return
-    try:
-        import os as _os
-        _base = _os.path.dirname(_os.path.abspath(__file__))
-        _db   = settings.db_path if _os.path.isabs(settings.db_path) else _os.path.join(_base, settings.db_path)
-        conn  = _sqlite3.connect(_db)
-        try:
-            conn.execute("ALTER TABLE users ADD COLUMN avatar_url TEXT")
-        except Exception:
-            pass
-        try:
-            conn.execute("ALTER TABLE submissions ADD COLUMN student_notes TEXT")
-        except Exception:
-            pass
-        conn.commit()
-        conn.close()
-    except Exception:
-        pass
-
-
 API = "/api"
 routers = [
     auth_router,
@@ -108,7 +87,7 @@ def startup():
     print(f"║   ML svc: {settings.ml_service_url}       ║")
     print("╚══════════════════════════════════════════════╝\n")
     test_connection()
-    _migrate_db()
+    auto_init_database()
 
 
 @app.exception_handler(Exception)
