@@ -379,8 +379,14 @@ function Sidebar({ role, active, onTab, onLogout, unread }) {
   return (
     <aside style={s.sidebar}>
       <div style={s.sideHeader}>
-        <img src="/kwasu-logo.png" alt="KWASU" style={s.logoImg} />
-        <p style={s.sideRole}>{role?.toUpperCase()}</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <img src="/kwasu.png" alt="KWASU" style={s.logoImg} />
+          <div>
+            <div style={{ color: '#ffffff', fontWeight: 800, fontSize: 16, letterSpacing: '0.5px', lineHeight: 1.2 }}>KWASU</div>
+            <div style={{ color: '#22c55e', fontSize: 10, fontWeight: 700, letterSpacing: '1px' }}>SPSEMS</div>
+          </div>
+        </div>
+        <p style={s.sideRole}>{role?.toUpperCase() || 'STUDENT'}</p>
       </div>
       <nav style={{ flex: 1, paddingTop: 8 }}>
         {tabs.map(({ id, label, Icon }) => (
@@ -446,7 +452,7 @@ const s = {
   layout:    { display: 'flex', minHeight: '100vh', background: '#0a0a0a' },
   sidebar:   { width: 228, background: '#080808', display: 'flex', flexDirection: 'column', padding: '24px 0', borderRight: '1px solid rgba(255,255,255,0.06)' },
   sideHeader:{ padding: '0 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)' },
-  logoImg:   { height: 34, filter: 'brightness(0) invert(1)', display: 'block', marginBottom: 8 },
+  logoImg:   { height: 38, width: 'auto', display: 'block', objectFit: 'contain' },
   sideRole:  { color: '#4b5563', fontSize: 10, letterSpacing: '1.5px', textTransform: 'uppercase', fontWeight: 600 },
   navBtn:    { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 20px', background: 'none', border: 'none', borderLeft: '3px solid transparent', color: '#6b7280', textAlign: 'left', fontSize: 13, cursor: 'pointer', fontWeight: 500, transition: 'all 0.15s' },
   navBtnActive: { background: 'rgba(22,163,74,0.08)', color: '#22c55e', borderLeftColor: '#16a34a', fontWeight: 600 },
