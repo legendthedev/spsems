@@ -124,25 +124,29 @@ SQLITE_TABLES = [
           alert_id     INTEGER PRIMARY KEY AUTOINCREMENT,
           user_id      INTEGER NOT NULL,
           project_id   INTEGER,
-          alert_type   TEXT    NOT NULL CHECK(alert_type IN ('deadline','inactivity','risk','feedback','system')),
+          alert_type   TEXT    NOT NULL CHECK(alert_type IN ('deadline','inactivity','risk','feedback','system','ping','milestone_due','overdue','risk_detected','allocation')),
           title        TEXT    NOT NULL,
           message      TEXT    NOT NULL,
           severity     TEXT    DEFAULT 'info' CHECK(severity IN ('info','warning','critical')),
           is_read      INTEGER DEFAULT 0,
+          triggered_at TEXT    DEFAULT (datetime('now')),
           created_at   TEXT    DEFAULT (datetime('now')),
+          read_at      TEXT,
           FOREIGN KEY (user_id)    REFERENCES users(user_id)       ON DELETE CASCADE,
-          FOREIGN KEY (project_id) REFERENCES projects(project_id) ON DELETE CASCADE
+          FOREIGN KEY (project_id) REFERENCES projects(project_id) ON DELETE SET NULL
         )
     """),
     ("messages", """
         CREATE TABLE IF NOT EXISTS messages (
-          msg_id      INTEGER PRIMARY KEY AUTOINCREMENT,
+          message_id  INTEGER PRIMARY KEY AUTOINCREMENT,
+          msg_id      INTEGER,
           sender_id   INTEGER NOT NULL,
           receiver_id INTEGER NOT NULL,
           project_id  INTEGER,
           subject     TEXT,
           body        TEXT    NOT NULL,
           is_read     INTEGER DEFAULT 0,
+          sent_at     TEXT    DEFAULT (datetime('now')),
           created_at  TEXT    DEFAULT (datetime('now')),
           FOREIGN KEY (sender_id)   REFERENCES users(user_id)       ON DELETE CASCADE,
           FOREIGN KEY (receiver_id) REFERENCES users(user_id)       ON DELETE CASCADE,
@@ -312,24 +316,28 @@ POSTGRES_TABLES = [
         CREATE TABLE IF NOT EXISTS alerts (
           alert_id     SERIAL PRIMARY KEY,
           user_id      INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-          project_id   INTEGER REFERENCES projects(project_id) ON DELETE CASCADE,
-          alert_type   VARCHAR(20) NOT NULL CHECK(alert_type IN ('deadline','inactivity','risk','feedback','system')),
+          project_id   INTEGER REFERENCES projects(project_id) ON DELETE SET NULL,
+          alert_type   VARCHAR(50) NOT NULL CHECK(alert_type IN ('deadline','inactivity','risk','feedback','system','ping','milestone_due','overdue','risk_detected','allocation')),
           title        VARCHAR(255) NOT NULL,
           message      TEXT NOT NULL,
           severity     VARCHAR(20) DEFAULT 'info' CHECK(severity IN ('info','warning','critical')),
           is_read      INTEGER DEFAULT 0,
-          created_at   TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+          triggered_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+          created_at   TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+          read_at      TIMESTAMPTZ
         )
     """),
     ("messages", """
         CREATE TABLE IF NOT EXISTS messages (
-          msg_id      SERIAL PRIMARY KEY,
+          message_id  SERIAL PRIMARY KEY,
+          msg_id      INTEGER,
           sender_id   INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
           receiver_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
           project_id  INTEGER REFERENCES projects(project_id) ON DELETE SET NULL,
           subject     VARCHAR(255),
           body        TEXT NOT NULL,
           is_read     INTEGER DEFAULT 0,
+          sent_at     TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
           created_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
         )
     """),
@@ -543,6 +551,62 @@ def auto_init_database():
         try:
             conn.execute(text("ALTER TABLE submissions ADD COLUMN uploaded_at TEXT"))
             conn.execute(text("UPDATE submissions SET uploaded_at = submitted_at WHERE uploaded_at IS NULL"))
+        except Exception:
+            pass
+
+        # Alerts migrations
+        try:
+            conn.execute(text("ALTER TABLE alerts ADD COLUMN triggered_at TEXT"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("UPDATE alerts SET triggered_at = created_at WHERE triggered_at IS NULL"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE alerts ADD COLUMN created_at TEXT"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("UPDATE alerts SET created_at = triggered_at WHERE created_at IS NULL"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE alerts ADD COLUMN read_at TEXT"))
+        except Exception:
+            pass
+
+        # Messages migrations
+        try:
+            conn.execute(text("ALTER TABLE messages ADD COLUMN message_id INTEGER"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("UPDATE messages SET message_id = msg_id WHERE message_id IS NULL"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE messages ADD COLUMN msg_id INTEGER"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("UPDATE messages SET msg_id = message_id WHERE msg_id IS NULL"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE messages ADD COLUMN sent_at TEXT"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("UPDATE messages SET sent_at = created_at WHERE sent_at IS NULL"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE messages ADD COLUMN created_at TEXT"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("UPDATE messages SET created_at = sent_at WHERE created_at IS NULL"))
         except Exception:
             pass
 

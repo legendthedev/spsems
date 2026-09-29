@@ -11,15 +11,49 @@ router = APIRouter(tags=["Messages"])
 
 @router.get("/messages")
 def get_messages(db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
-    rows = db.execute(
-        text("""SELECT m.*, u.full_name AS sender_name, u.role AS sender_role
-               FROM messages m
-               JOIN users u ON m.sender_id = u.user_id
-               WHERE m.receiver_id = :uid OR m.sender_id = :uid
-               ORDER BY m.sent_at DESC LIMIT 50"""),
-        {"uid": user["user_id"]},
-    ).fetchall()
-    return {"success": True, "messages": [dict(r._mapping) for r in rows]}
+    try:
+        rows = db.execute(
+            text("""SELECT m.*, u.full_name AS sender_name, u.role AS sender_role
+                   FROM messages m
+                   JOIN users u ON m.sender_id = u.user_id
+                   WHERE m.receiver_id = :uid OR m.sender_id = :uid
+                   ORDER BY m.sent_at DESC LIMIT 50"""),
+            {"uid": user["user_id"]},
+        ).fetchall()
+    except Exception:
+        try:
+            rows = db.execute(
+                text("""SELECT m.*, u.full_name AS sender_name, u.role AS sender_role
+                       FROM messages m
+                       JOIN users u ON m.sender_id = u.user_id
+                       WHERE m.receiver_id = :uid OR m.sender_id = :uid
+                       ORDER BY m.created_at DESC LIMIT 50"""),
+                {"uid": user["user_id"]},
+            ).fetchall()
+        except Exception:
+            rows = db.execute(
+                text("""SELECT m.*, u.full_name AS sender_name, u.role AS sender_role
+                       FROM messages m
+                       JOIN users u ON m.sender_id = u.user_id
+                       WHERE m.receiver_id = :uid OR m.sender_id = :uid
+                       ORDER BY 1 DESC LIMIT 50"""),
+                {"uid": user["user_id"]},
+            ).fetchall()
+
+    messages_list = []
+    for r in rows:
+        d = dict(r._mapping)
+        if "message_id" not in d or d["message_id"] is None:
+            d["message_id"] = d.get("msg_id")
+        if "msg_id" not in d or d["msg_id"] is None:
+            d["msg_id"] = d.get("message_id")
+        if not d.get("sent_at"):
+            d["sent_at"] = d.get("created_at") or ""
+        if not d.get("created_at"):
+            d["created_at"] = d.get("sent_at") or ""
+        messages_list.append(d)
+
+    return {"success": True, "messages": messages_list}
 
 
 @router.post("/messages", status_code=201)

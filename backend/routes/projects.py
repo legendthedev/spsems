@@ -367,18 +367,56 @@ def get_student_project(db: Session = Depends(get_db), user: dict = Depends(requ
 
     pid = proj.project_id
     def rows(rs): return [dict(r._mapping) for r in rs]
+
+    try:
+        raw_alerts = rows(db.execute(text("SELECT * FROM alerts WHERE user_id=:uid ORDER BY triggered_at DESC LIMIT 20"), {"uid": user["user_id"]}).fetchall())
+    except Exception:
+        try:
+            raw_alerts = rows(db.execute(text("SELECT * FROM alerts WHERE user_id=:uid ORDER BY created_at DESC LIMIT 20"), {"uid": user["user_id"]}).fetchall())
+        except Exception:
+            raw_alerts = []
+
+    for a in raw_alerts:
+        if not a.get("triggered_at"):
+            a["triggered_at"] = a.get("created_at") or ""
+        if not a.get("created_at"):
+            a["created_at"] = a.get("triggered_at") or ""
+
+    try:
+        raw_messages = rows(db.execute(
+            text("""SELECT m.*, u.full_name AS sender_name, u.role AS sender_role
+               FROM messages m JOIN users u ON m.sender_id=u.user_id
+               WHERE m.receiver_id=:uid OR m.sender_id=:uid ORDER BY m.sent_at DESC LIMIT 20"""),
+            {"uid": user["user_id"]},
+        ).fetchall())
+    except Exception:
+        try:
+            raw_messages = rows(db.execute(
+                text("""SELECT m.*, u.full_name AS sender_name, u.role AS sender_role
+                   FROM messages m JOIN users u ON m.sender_id=u.user_id
+                   WHERE m.receiver_id=:uid OR m.sender_id=:uid ORDER BY m.created_at DESC LIMIT 20"""),
+                {"uid": user["user_id"]},
+            ).fetchall())
+        except Exception:
+            raw_messages = []
+
+    for m in raw_messages:
+        if "message_id" not in m or m["message_id"] is None:
+            m["message_id"] = m.get("msg_id")
+        if "msg_id" not in m or m["msg_id"] is None:
+            m["msg_id"] = m.get("message_id")
+        if not m.get("sent_at"):
+            m["sent_at"] = m.get("created_at") or ""
+        if not m.get("created_at"):
+            m["created_at"] = m.get("sent_at") or ""
+
     return {
         "success":     True,
         "project":     dict(proj._mapping),
         "milestones":  rows(db.execute(text("SELECT * FROM milestones  WHERE project_id=:pid ORDER BY due_date"), {"pid": pid}).fetchall()),
         "submissions": rows(db.execute(text("SELECT * FROM submissions WHERE project_id=:pid ORDER BY COALESCE(submitted_at, uploaded_at) DESC LIMIT 10"), {"pid": pid}).fetchall()),
-        "alerts":      rows(db.execute(text("SELECT * FROM alerts WHERE user_id=:uid ORDER BY triggered_at DESC LIMIT 20"), {"uid": user["user_id"]}).fetchall()),
-        "messages":    rows(db.execute(
-            text("""SELECT m.*, u.full_name AS sender_name, u.role AS sender_role
-               FROM messages m JOIN users u ON m.sender_id=u.user_id
-               WHERE m.receiver_id=:uid OR m.sender_id=:uid ORDER BY m.sent_at DESC LIMIT 20"""),
-            {"uid": user["user_id"]},
-        ).fetchall()),
+        "alerts":      raw_alerts,
+        "messages":    raw_messages,
     }
 
 

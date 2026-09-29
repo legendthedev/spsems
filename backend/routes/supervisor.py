@@ -63,12 +63,40 @@ def get_dashboard(db: Session = Depends(get_db), user: dict = Depends(require_ro
         {"sid": sid},
     ).fetchall()
 
-    recent_alerts = db.execute(
-        text("""SELECT a.* FROM alerts a
-           JOIN projects p ON a.project_id=p.project_id
-           WHERE p.supervisor_id=:sid ORDER BY a.triggered_at DESC LIMIT 20"""),
-        {"sid": sid},
-    ).fetchall()
+    try:
+        recent_alerts = db.execute(
+            text("""SELECT a.* FROM alerts a
+               JOIN projects p ON a.project_id=p.project_id
+               WHERE p.supervisor_id=:sid ORDER BY a.triggered_at DESC LIMIT 20"""),
+            {"sid": sid},
+        ).fetchall()
+    except Exception:
+        try:
+            recent_alerts = db.execute(
+                text("""SELECT a.* FROM alerts a
+                   JOIN projects p ON a.project_id=p.project_id
+                   WHERE p.supervisor_id=:sid ORDER BY a.created_at DESC LIMIT 20"""),
+                {"sid": sid},
+            ).fetchall()
+        except Exception:
+            try:
+                recent_alerts = db.execute(
+                    text("""SELECT a.* FROM alerts a
+                       JOIN projects p ON a.project_id=p.project_id
+                       WHERE p.supervisor_id=:sid ORDER BY a.alert_id DESC LIMIT 20"""),
+                    {"sid": sid},
+                ).fetchall()
+            except Exception:
+                recent_alerts = []
+
+    mapped_alerts = []
+    for r in recent_alerts:
+        d = dict(r._mapping)
+        if not d.get("triggered_at"):
+            d["triggered_at"] = d.get("created_at") or ""
+        if not d.get("created_at"):
+            d["created_at"] = d.get("triggered_at") or ""
+        mapped_alerts.append(d)
 
     return {
         "success":  True,
@@ -77,7 +105,7 @@ def get_dashboard(db: Session = Depends(get_db), user: dict = Depends(require_ro
         "atRisk":         at_risk,
         "onTrack":        on_track,
         "pendingReviews": [dict(r._mapping) for r in pending_reviews],
-        "recentAlerts":   [dict(r._mapping) for r in recent_alerts],
+        "recentAlerts":   mapped_alerts,
     }
 
 
