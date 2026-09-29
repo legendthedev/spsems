@@ -34,7 +34,7 @@ export default function RegisterAdminPage() {
       toast.success('Admin registration submitted. Awaiting approval before you can log in.');
       navigate('/login');
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Registration failed. Check your admin code.');
+      toast.error(err.response?.data?.detail || err.response?.data?.message || 'Registration failed. Check your admin code.');
     } finally {
       setBusy(false);
     }

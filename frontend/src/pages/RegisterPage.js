@@ -45,7 +45,7 @@ export default function RegisterPage() {
       toast.success('Registration submitted. Awaiting admin approval before you can log in.');
       navigate('/login');
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Registration failed.');
+      toast.error(err.response?.data?.detail || err.response?.data?.message || 'Registration failed.');
     } finally {
       setBusy(false);
     }

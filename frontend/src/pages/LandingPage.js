@@ -18,7 +18,7 @@ export default function LandingPage() {
       toast.success(`Welcome back, ${user.full_name}`);
       navigate(`/${user.role}`);
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Login failed. Check your credentials.');
+      toast.error(err.response?.data?.detail || err.response?.data?.message || 'Login failed. Check your credentials.');
     } finally {
       setBusy(false);
     }
