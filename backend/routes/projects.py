@@ -95,7 +95,7 @@ def student_dashboard(db: Session = Depends(get_db), user: dict = Depends(requir
         milestones.append(md)
 
     subs = db.execute(
-        text("SELECT * FROM submissions WHERE project_id=:pid ORDER BY uploaded_at DESC LIMIT 10"), {"pid": pid}
+        text("SELECT * FROM submissions WHERE project_id=:pid ORDER BY COALESCE(submitted_at, uploaded_at) DESC LIMIT 10"), {"pid": pid}
     ).fetchall()
 
     return {
@@ -371,7 +371,7 @@ def get_student_project(db: Session = Depends(get_db), user: dict = Depends(requ
         "success":     True,
         "project":     dict(proj._mapping),
         "milestones":  rows(db.execute(text("SELECT * FROM milestones  WHERE project_id=:pid ORDER BY due_date"), {"pid": pid}).fetchall()),
-        "submissions": rows(db.execute(text("SELECT * FROM submissions WHERE project_id=:pid ORDER BY uploaded_at DESC LIMIT 10"), {"pid": pid}).fetchall()),
+        "submissions": rows(db.execute(text("SELECT * FROM submissions WHERE project_id=:pid ORDER BY COALESCE(submitted_at, uploaded_at) DESC LIMIT 10"), {"pid": pid}).fetchall()),
         "alerts":      rows(db.execute(text("SELECT * FROM alerts WHERE user_id=:uid ORDER BY triggered_at DESC LIMIT 20"), {"uid": user["user_id"]}).fetchall()),
         "messages":    rows(db.execute(
             text("""SELECT m.*, u.full_name AS sender_name, u.role AS sender_role
@@ -446,8 +446,8 @@ def run_risk_prediction(
              (SELECT COUNT(*) FROM milestones  WHERE project_id=p.project_id AND status='completed') AS completed_milestones,
              (SELECT COUNT(*) FROM milestones  WHERE project_id=p.project_id) AS total_milestones,
              (SELECT COUNT(*) FROM milestones  WHERE project_id=p.project_id AND status='overdue')   AS overdue_milestones,
-             COALESCE((SELECT CAST(julianday('now') - julianday(MAX(uploaded_at)) AS INTEGER) FROM submissions WHERE project_id=p.project_id),30) AS days_since_last_sub,
-             COALESCE((SELECT AVG(julianday(reviewed_at) - julianday(uploaded_at)) FROM submissions WHERE project_id=p.project_id AND reviewed_at IS NOT NULL),5) AS avg_feedback_days
+             COALESCE((SELECT CAST(julianday('now') - julianday(MAX(COALESCE(submitted_at, uploaded_at))) AS INTEGER) FROM submissions WHERE project_id=p.project_id),30) AS days_since_last_sub,
+             COALESCE((SELECT AVG(julianday(reviewed_at) - julianday(COALESCE(submitted_at, uploaded_at))) FROM submissions WHERE project_id=p.project_id AND reviewed_at IS NOT NULL),5) AS avg_feedback_days
            FROM projects p WHERE p.project_id=:pid"""),
         {"pid": project_id},
     ).fetchone()

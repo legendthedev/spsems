@@ -113,6 +113,7 @@ SQLITE_TABLES = [
           supervisor_comment TEXT,
           student_notes      TEXT,
           submitted_at       TEXT    DEFAULT (datetime('now')),
+          uploaded_at        TEXT    DEFAULT (datetime('now')),
           reviewed_at        TEXT,
           FOREIGN KEY (project_id) REFERENCES projects(project_id) ON DELETE CASCADE,
           FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE
@@ -303,6 +304,7 @@ POSTGRES_TABLES = [
           supervisor_comment TEXT,
           student_notes      TEXT,
           submitted_at       TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+          uploaded_at        TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
           reviewed_at        TIMESTAMPTZ
         )
     """),
@@ -536,6 +538,11 @@ def auto_init_database():
             pass
         try:
             conn.execute(text("ALTER TABLE submissions ADD COLUMN student_notes TEXT"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE submissions ADD COLUMN uploaded_at TEXT"))
+            conn.execute(text("UPDATE submissions SET uploaded_at = submitted_at WHERE uploaded_at IS NULL"))
         except Exception:
             pass
 

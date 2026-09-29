@@ -1,3 +1,4 @@
+import os
 import json
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
@@ -271,7 +272,7 @@ def manual_allocate(
 @router.get("/ml-metrics")
 def get_ml_metrics(user: dict = Depends(require_role("admin"))):
     try:
-        resp = httpx.get(f"{settings.ml_service_url}/metrics", timeout=8.0)
+        resp = httpx.get(f"{settings.ml_service_url}/metrics", timeout=25.0)
         resp.raise_for_status()
         return resp.json()
     except httpx.ConnectError:
@@ -298,52 +299,90 @@ def retrain_ml_model(model_name: str, user: dict = Depends(require_role("admin")
 @router.get("/metrics")
 def get_metrics(db: Session = Depends(get_db), user: dict = Depends(require_role("admin"))):
     def scalar(q, params=None):
-        return db.execute(text(q), params or {}).fetchone()[0] or 0
+        try:
+            row = db.execute(text(q), params or {}).fetchone()
+            return row[0] if (row and row[0] is not None) else 0
+        except Exception:
+            return 0
+
+    is_postgres = bool(os.getenv("DATABASE_URL") and ("postgres" in os.getenv("DATABASE_URL")))
 
     # ── Project status funnel ──────────────────────────────────────────────
-    status_rows = db.execute(text(
-        "SELECT status, COUNT(*) AS cnt FROM projects GROUP BY status"
-    )).fetchall()
-    status_dist = [dict(r._mapping) for r in status_rows]
+    try:
+        status_rows = db.execute(text(
+            "SELECT status, COUNT(*) AS cnt FROM projects GROUP BY status"
+        )).fetchall()
+        status_dist = [dict(r._mapping) for r in status_rows]
+    except Exception:
+        status_dist = []
 
     # ── Submissions per week (last 8 weeks) ───────────────────────────────
-    weekly_rows = db.execute(text(
-        """SELECT strftime('%Y-W%W', uploaded_at) AS week, COUNT(*) AS cnt
-           FROM submissions
-           WHERE uploaded_at >= date('now','-56 days')
-           GROUP BY week ORDER BY week"""
-    )).fetchall()
-    weekly_subs = [dict(r._mapping) for r in weekly_rows]
+    weekly_subs = []
+    try:
+        if is_postgres:
+            sql = """SELECT to_char(COALESCE(submitted_at, uploaded_at, CURRENT_TIMESTAMP), 'YYYY-"W"IW') AS week, COUNT(*) AS cnt
+                     FROM submissions
+                     WHERE COALESCE(submitted_at, uploaded_at) >= CURRENT_TIMESTAMP - INTERVAL '56 days'
+                     GROUP BY week ORDER BY week"""
+        else:
+            sql = """SELECT strftime('%Y-W%W', COALESCE(submitted_at, uploaded_at, datetime('now'))) AS week, COUNT(*) AS cnt
+                     FROM submissions
+                     WHERE COALESCE(submitted_at, uploaded_at, datetime('now')) >= date('now','-56 days')
+                     GROUP BY week ORDER BY week"""
+        weekly_rows = db.execute(text(sql)).fetchall()
+        weekly_subs = [dict(r._mapping) for r in weekly_rows]
+    except Exception:
+        weekly_subs = []
 
     # ── Submission chapter breakdown ──────────────────────────────────────
-    chapter_rows = db.execute(text(
-        "SELECT COALESCE(chapter,'unknown') AS chapter, COUNT(*) AS cnt FROM submissions GROUP BY chapter"
-    )).fetchall()
-    chapter_dist = [dict(r._mapping) for r in chapter_rows]
+    try:
+        chapter_rows = db.execute(text(
+            "SELECT COALESCE(chapter,'unknown') AS chapter, COUNT(*) AS cnt FROM submissions GROUP BY chapter"
+        )).fetchall()
+        chapter_dist = [dict(r._mapping) for r in chapter_rows]
+    except Exception:
+        chapter_dist = []
 
     # ── Avg review turnaround per supervisor (days) ───────────────────────
-    turnaround_rows = db.execute(text(
-        """SELECT u.full_name AS supervisor_name,
-                  COUNT(*) AS total_reviewed,
-                  ROUND(AVG(CAST(julianday(sub.reviewed_at) - julianday(sub.uploaded_at) AS REAL)),1) AS avg_days
-           FROM submissions sub
-           JOIN projects p ON sub.project_id=p.project_id
-           JOIN supervisors s ON p.supervisor_id=s.supervisor_id
-           JOIN users u ON s.user_id=u.user_id
-           WHERE sub.reviewed_at IS NOT NULL
-           GROUP BY s.supervisor_id ORDER BY avg_days"""
-    )).fetchall()
-    turnaround = [dict(r._mapping) for r in turnaround_rows]
+    turnaround = []
+    try:
+        if is_postgres:
+            sql = """SELECT u.full_name AS supervisor_name,
+                            COUNT(*) AS total_reviewed,
+                            ROUND(CAST(AVG(EXTRACT(EPOCH FROM (sub.reviewed_at - COALESCE(sub.submitted_at, sub.uploaded_at))) / 86400) AS NUMERIC), 1) AS avg_days
+                     FROM submissions sub
+                     JOIN projects p ON sub.project_id=p.project_id
+                     JOIN supervisors s ON p.supervisor_id=s.supervisor_id
+                     JOIN users u ON s.user_id=u.user_id
+                     WHERE sub.reviewed_at IS NOT NULL
+                     GROUP BY u.full_name ORDER BY avg_days"""
+        else:
+            sql = """SELECT u.full_name AS supervisor_name,
+                            COUNT(*) AS total_reviewed,
+                            ROUND(AVG(CAST(julianday(sub.reviewed_at) - julianday(COALESCE(sub.submitted_at, sub.uploaded_at)) AS REAL)),1) AS avg_days
+                     FROM submissions sub
+                     JOIN projects p ON sub.project_id=p.project_id
+                     JOIN supervisors s ON p.supervisor_id=s.supervisor_id
+                     JOIN users u ON s.user_id=u.user_id
+                     WHERE sub.reviewed_at IS NOT NULL
+                     GROUP BY u.full_name ORDER BY avg_days"""
+        turnaround_rows = db.execute(text(sql)).fetchall()
+        turnaround = [dict(r._mapping) for r in turnaround_rows]
+    except Exception:
+        turnaround = []
 
     # ── Supervisor workload ───────────────────────────────────────────────
-    workload_rows = db.execute(text(
-        """SELECT u.full_name AS name, s.current_load, s.max_load,
-                  ROUND(CAST(s.current_load AS REAL)/MAX(s.max_load,1)*100,0) AS pct
-           FROM supervisors s JOIN users u ON s.user_id=u.user_id
-           WHERE u.is_active=1
-           ORDER BY pct DESC"""
-    )).fetchall()
-    workload = [dict(r._mapping) for r in workload_rows]
+    try:
+        workload_rows = db.execute(text(
+            """SELECT u.full_name AS name, s.current_load, s.max_load,
+                      ROUND(CAST(s.current_load AS REAL)/MAX(s.max_load,1)*100,0) AS pct
+               FROM supervisors s JOIN users u ON s.user_id=u.user_id
+               WHERE u.is_active=1
+               ORDER BY pct DESC"""
+        )).fetchall()
+        workload = [dict(r._mapping) for r in workload_rows]
+    except Exception:
+        workload = []
 
     # ── Milestone completion ──────────────────────────────────────────────
     ms_total     = scalar("SELECT COUNT(*) FROM milestones")
@@ -352,33 +391,52 @@ def get_metrics(db: Session = Depends(get_db), user: dict = Depends(require_role
     ms_pending   = ms_total - ms_completed - ms_overdue
 
     # ── Login activity (last 7 days) ──────────────────────────────────────
-    login_rows = db.execute(text(
-        """SELECT strftime('%Y-%m-%d', logged_at) AS day, COUNT(*) AS cnt
-           FROM audit_log
-           WHERE action='login' AND status='success'
-             AND logged_at >= date('now','-7 days')
-           GROUP BY day ORDER BY day"""
-    )).fetchall()
-    login_activity = [dict(r._mapping) for r in login_rows]
+    login_activity = []
+    try:
+        if is_postgres:
+            sql = """SELECT to_char(logged_at, 'YYYY-MM-DD') AS day, COUNT(*) AS cnt
+                     FROM audit_log
+                     WHERE action='login' AND status='success'
+                       AND logged_at >= CURRENT_TIMESTAMP - INTERVAL '7 days'
+                     GROUP BY day ORDER BY day"""
+        else:
+            sql = """SELECT strftime('%Y-%m-%d', logged_at) AS day, COUNT(*) AS cnt
+                     FROM audit_log
+                     WHERE action='login' AND status='success'
+                       AND logged_at >= date('now','-7 days')
+                     GROUP BY day ORDER BY day"""
+        login_rows = db.execute(text(sql)).fetchall()
+        login_activity = [dict(r._mapping) for r in login_rows]
+    except Exception:
+        login_activity = []
 
     # ── Alert severity distribution ───────────────────────────────────────
-    alert_rows = db.execute(text(
-        "SELECT severity, COUNT(*) AS cnt FROM alerts GROUP BY severity"
-    )).fetchall()
-    alert_dist = [dict(r._mapping) for r in alert_rows]
+    try:
+        alert_rows = db.execute(text(
+            "SELECT severity, COUNT(*) AS cnt FROM alerts GROUP BY severity"
+        )).fetchall()
+        alert_dist = [dict(r._mapping) for r in alert_rows]
+    except Exception:
+        alert_dist = []
 
     # ── Submission status breakdown ───────────────────────────────────────
-    sub_status_rows = db.execute(text(
-        "SELECT status, COUNT(*) AS cnt FROM submissions GROUP BY status"
-    )).fetchall()
-    sub_status_dist = [dict(r._mapping) for r in sub_status_rows]
+    try:
+        sub_status_rows = db.execute(text(
+            "SELECT status, COUNT(*) AS cnt FROM submissions GROUP BY status"
+        )).fetchall()
+        sub_status_dist = [dict(r._mapping) for r in sub_status_rows]
+    except Exception:
+        sub_status_dist = []
 
     # ── Top-level KPIs ────────────────────────────────────────────────────
     total_submissions  = scalar("SELECT COUNT(*) FROM submissions")
-    avg_chapters_done  = round(
-        scalar("SELECT AVG(chapter_count) FROM (SELECT project_id, COUNT(DISTINCT chapter) AS chapter_count FROM submissions GROUP BY project_id)") or 0,
-        1,
-    )
+    try:
+        avg_chapters_done = round(
+            scalar("SELECT AVG(chapter_count) FROM (SELECT project_id, COUNT(DISTINCT chapter) AS chapter_count FROM submissions GROUP BY project_id)") or 0,
+            1,
+        )
+    except Exception:
+        avg_chapters_done = 0.0
 
     return {
         "success": True,
@@ -389,7 +447,7 @@ def get_metrics(db: Session = Depends(get_db), user: dict = Depends(require_role
             "ms_completed":       ms_completed,
             "ms_overdue":         ms_overdue,
             "ms_pending":         ms_pending,
-            "ms_completion_pct":  round(ms_completed / max(ms_total, 1) * 100, 1),
+            "ms_completion_pct":  round(ms_completed / max(ms_total, 1) * 100, 1) if ms_total > 0 else 0,
         },
         "status_dist":    status_dist,
         "weekly_subs":    weekly_subs,

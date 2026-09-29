@@ -40,7 +40,7 @@ def get_dashboard(db: Session = Depends(get_db), user: dict = Depends(require_ro
              (SELECT COUNT(*) FROM milestones  WHERE project_id=p.project_id AND status='completed') AS ms_done,
              (SELECT COUNT(*) FROM milestones  WHERE project_id=p.project_id)                        AS ms_total,
              (SELECT COUNT(*) FROM milestones  WHERE project_id=p.project_id AND status='overdue')   AS ms_overdue,
-             COALESCE((SELECT CAST(julianday('now') - julianday(MAX(uploaded_at)) AS INTEGER) FROM submissions WHERE project_id=p.project_id),NULL) AS days_inactive
+             COALESCE((SELECT CAST(julianday('now') - julianday(MAX(COALESCE(submitted_at, uploaded_at))) AS INTEGER) FROM submissions WHERE project_id=p.project_id),NULL) AS days_inactive
            FROM students st
            JOIN users u    ON st.user_id=u.user_id
            LEFT JOIN projects p ON st.project_id=p.project_id
@@ -59,7 +59,7 @@ def get_dashboard(db: Session = Depends(get_db), user: dict = Depends(require_ro
            JOIN students st ON sub.student_id=st.student_id
            JOIN users u     ON st.user_id=u.user_id
            WHERE p.supervisor_id=:sid AND sub.status='submitted'
-           ORDER BY sub.uploaded_at DESC"""),
+           ORDER BY COALESCE(sub.submitted_at, sub.uploaded_at) DESC"""),
         {"sid": sid},
     ).fetchall()
 
@@ -103,7 +103,7 @@ def get_project_submissions(
                JOIN students st ON sub.student_id = st.student_id
                JOIN users u     ON st.user_id = u.user_id
                WHERE sub.project_id = :pid
-               ORDER BY sub.uploaded_at DESC"""),
+               ORDER BY COALESCE(sub.submitted_at, sub.uploaded_at) DESC"""),
         {"pid": project_id},
     ).fetchall()
     return {"success": True, "submissions": [dict(r._mapping) for r in rows]}

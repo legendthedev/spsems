@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 from functools import lru_cache
 
 
@@ -18,6 +19,20 @@ class Settings(BaseSettings):
 
     # ML microservice (separate process on port 8001)
     ml_service_url: str = "http://localhost:8001"
+
+    @field_validator("ml_service_url", mode="after")
+    @classmethod
+    def normalize_ml_url(cls, v: str) -> str:
+        if not v:
+            return "http://localhost:8001"
+        v = v.strip().rstrip("/")
+        if not (v.startswith("http://") or v.startswith("https://")):
+            if "localhost" in v or "127.0.0.1" in v:
+                return f"http://{v}"
+            if "." not in v:
+                return f"https://{v}.onrender.com"
+            return f"https://{v}"
+        return v
 
     # File uploads
     upload_dir:       str = "./uploads"

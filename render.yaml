@@ -33,9 +33,6 @@ services:
       - key: ADMIN_REG_CODE
         value: KWASU-HOD-2026
       - key: ML_SERVICE_URL
-        fromService:
-          type: web
-          name: spsems-ml-service
-          property: host
+        value: https://spsems-ml-service.onrender.com
       - key: FRONTEND_URL
         value: https://*.vercel.app
