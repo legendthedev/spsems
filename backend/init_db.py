@@ -48,18 +48,20 @@ SQLITE_TABLES = [
     """),
     ("students", """
         CREATE TABLE IF NOT EXISTS students (
-          student_id      INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id         INTEGER NOT NULL UNIQUE,
-          matric_number   TEXT    NOT NULL UNIQUE,
-          department      TEXT    NOT NULL DEFAULT 'Computer Science',
-          level           TEXT    DEFAULT '400',
-          supervisor_id   INTEGER,
-          project_id      INTEGER,
-          research_domain TEXT,
-          enrollment_year INTEGER,
-          created_at      TEXT    DEFAULT (datetime('now')),
-          FOREIGN KEY (user_id)       REFERENCES users(user_id)            ON DELETE CASCADE,
-          FOREIGN KEY (supervisor_id) REFERENCES supervisors(supervisor_id) ON DELETE SET NULL
+          student_id       INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id          INTEGER NOT NULL UNIQUE,
+          matric_number    TEXT    NOT NULL UNIQUE,
+          department       TEXT    NOT NULL DEFAULT 'Computer Science',
+          level            TEXT    DEFAULT '400',
+          supervisor_id    INTEGER,
+          co_supervisor_id INTEGER,
+          project_id       INTEGER,
+          research_domain  TEXT,
+          enrollment_year  INTEGER,
+          created_at       TEXT    DEFAULT (datetime('now')),
+          FOREIGN KEY (user_id)          REFERENCES users(user_id)            ON DELETE CASCADE,
+          FOREIGN KEY (supervisor_id)    REFERENCES supervisors(supervisor_id) ON DELETE SET NULL,
+          FOREIGN KEY (co_supervisor_id) REFERENCES supervisors(supervisor_id) ON DELETE SET NULL
         )
     """),
     ("projects", """
@@ -67,6 +69,7 @@ SQLITE_TABLES = [
           project_id        INTEGER PRIMARY KEY AUTOINCREMENT,
           student_id        INTEGER NOT NULL,
           supervisor_id     INTEGER,
+          co_supervisor_id  INTEGER,
           title             TEXT    NOT NULL,
           abstract          TEXT,
           keywords          TEXT,
@@ -81,8 +84,9 @@ SQLITE_TABLES = [
           approved_at       TEXT,
           completed_at      TEXT,
           updated_at        TEXT    DEFAULT (datetime('now')),
-          FOREIGN KEY (student_id)    REFERENCES students(student_id)       ON DELETE CASCADE,
-          FOREIGN KEY (supervisor_id) REFERENCES supervisors(supervisor_id) ON DELETE SET NULL
+          FOREIGN KEY (student_id)       REFERENCES students(student_id)       ON DELETE CASCADE,
+          FOREIGN KEY (supervisor_id)    REFERENCES supervisors(supervisor_id) ON DELETE SET NULL,
+          FOREIGN KEY (co_supervisor_id) REFERENCES supervisors(supervisor_id) ON DELETE SET NULL
         )
     """),
     ("milestones", """
@@ -248,16 +252,17 @@ POSTGRES_TABLES = [
     """),
     ("students", """
         CREATE TABLE IF NOT EXISTS students (
-          student_id      SERIAL PRIMARY KEY,
-          user_id         INTEGER NOT NULL UNIQUE REFERENCES users(user_id) ON DELETE CASCADE,
-          matric_number   VARCHAR(50) NOT NULL UNIQUE,
-          department      VARCHAR(100) NOT NULL DEFAULT 'Computer Science',
-          level           VARCHAR(20) DEFAULT '400',
-          supervisor_id   INTEGER REFERENCES supervisors(supervisor_id) ON DELETE SET NULL,
-          project_id      INTEGER,
-          research_domain TEXT,
-          enrollment_year INTEGER,
-          created_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+          student_id       SERIAL PRIMARY KEY,
+          user_id          INTEGER NOT NULL UNIQUE REFERENCES users(user_id) ON DELETE CASCADE,
+          matric_number    VARCHAR(50) NOT NULL UNIQUE,
+          department       VARCHAR(100) NOT NULL DEFAULT 'Computer Science',
+          level            VARCHAR(20) DEFAULT '400',
+          supervisor_id    INTEGER REFERENCES supervisors(supervisor_id) ON DELETE SET NULL,
+          co_supervisor_id INTEGER REFERENCES supervisors(supervisor_id) ON DELETE SET NULL,
+          project_id       INTEGER,
+          research_domain  TEXT,
+          enrollment_year  INTEGER,
+          created_at       TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
         )
     """),
     ("projects", """
@@ -265,6 +270,7 @@ POSTGRES_TABLES = [
           project_id        SERIAL PRIMARY KEY,
           student_id        INTEGER NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
           supervisor_id     INTEGER REFERENCES supervisors(supervisor_id) ON DELETE SET NULL,
+          co_supervisor_id  INTEGER REFERENCES supervisors(supervisor_id) ON DELETE SET NULL,
           title             VARCHAR(255) NOT NULL,
           abstract          TEXT,
           keywords          TEXT,
@@ -607,6 +613,16 @@ def auto_init_database():
             pass
         try:
             conn.execute(text("UPDATE messages SET created_at = sent_at WHERE created_at IS NULL"))
+        except Exception:
+            pass
+
+        # Co-supervisor migrations
+        try:
+            conn.execute(text("ALTER TABLE students ADD COLUMN co_supervisor_id INTEGER"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE projects ADD COLUMN co_supervisor_id INTEGER"))
         except Exception:
             pass
 

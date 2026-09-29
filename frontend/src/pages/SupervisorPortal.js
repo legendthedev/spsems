@@ -75,12 +75,29 @@ function Overview({ data }) {
             <tbody>
               {data.students.map(p => (
                 <tr key={p.project_id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <td style={s.td}>{p.student_name}</td>
+                  <td style={s.td}>
+                    <div>{p.student_name}</div>
+                    {p.supervisor_role && (
+                      <span style={{
+                        fontSize: 10,
+                        padding: '1px 6px',
+                        borderRadius: 8,
+                        fontWeight: 600,
+                        display: 'inline-block',
+                        marginTop: 2,
+                        background: p.supervisor_role === 'Co-Supervisor' ? 'rgba(14,165,233,0.15)' : 'rgba(34,197,94,0.15)',
+                        color: p.supervisor_role === 'Co-Supervisor' ? '#38bdf8' : '#4ade80',
+                      }}>
+                        {p.supervisor_role}
+                      </span>
+                    )}
+                  </td>
                   <td style={{ ...s.td, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</td>
                   <td style={s.td}>Ch. {p.current_chapter}/5</td>
                   <td style={{ ...s.td, color: risk_color[p.risk_label] || '#6b7280', fontWeight: 600 }}>{p.risk_label || '—'}</td>
                   <td style={s.td}><StatusBadge status={p.status} /></td>
                 </tr>
+
               ))}
             </tbody>
           </table>
@@ -182,12 +199,32 @@ function StudentsTab({ students, reload }) {
             {/* ── Student header ── */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <h4 style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>{p.student_name}</h4>
-                <p style={{ fontSize: 13, color: '#9ca3af', marginTop: 2 }}>{p.title || '—'}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <h4 style={{ fontSize: 15, fontWeight: 700, color: '#fff', margin: 0 }}>{p.student_name}</h4>
+                  {p.supervisor_role && (
+                    <span style={{
+                      fontSize: 10,
+                      padding: '2px 8px',
+                      borderRadius: 10,
+                      fontWeight: 600,
+                      background: p.supervisor_role === 'Co-Supervisor' ? 'rgba(14,165,233,0.15)' : 'rgba(34,197,94,0.15)',
+                      color: p.supervisor_role === 'Co-Supervisor' ? '#38bdf8' : '#4ade80',
+                    }}>
+                      {p.supervisor_role}
+                    </span>
+                  )}
+                  {p.level && (
+                    <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 8, background: 'rgba(255,255,255,0.06)', color: '#9ca3af' }}>
+                      {p.level}
+                    </span>
+                  )}
+                </div>
+                <p style={{ fontSize: 13, color: '#9ca3af', marginTop: 4 }}>{p.title || '—'}</p>
                 <p style={{ fontSize: 12, color: '#4b5563', marginTop: 4 }}>
                   {p.ms_done || 0}/{p.ms_total || 5} milestones · {p.matric_number || '—'} · {p.submission_count || 0} submission(s)
                 </p>
               </div>
+
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <span style={{ color: risk_color[p.risk_label] || '#6b7280', fontWeight: 700, fontSize: 12 }}>
                   {p.risk_label || 'Unscanned'}

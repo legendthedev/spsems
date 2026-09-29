@@ -42,7 +42,7 @@ export default function StudentPortal() {
           {tab === 'proposal'  && <ProposalForm onSubmit={loadDashboard} />}
           {tab === 'progress'  && <ProgressTab  data={dashboard} />}
           {tab === 'alerts'    && <AlertsTab    alerts={alerts} reload={loadDashboard} />}
-          {tab === 'messages'  && <MessagesTab  user={user} supervisor={dashboard?.supervisor} />}
+          {tab === 'messages'  && <MessagesTab  user={user} supervisor={dashboard?.supervisor} coSupervisor={dashboard?.co_supervisor} />}
           {tab === 'profile'   && <ProfileTab   user={user} onUpdate={refreshUser} />}
         </div>
       </main>
@@ -62,8 +62,41 @@ function Dashboard({ data }) {
         <StatCard label="Project Status"   value={p ? p.status.replace(/_/g,' ') : 'None'}    color="#16a34a" />
         <StatCard label="Chapter Progress" value={p ? `${Math.round((p.chapter_progress||0)*100)}%` : '—'} color="#15803d" />
         <StatCard label="Risk Level"       value={p ? (p.risk_label || 'Unscanned') : '—'}  color={risk_color[p?.risk_label] || '#6b7280'} />
-        <StatCard label="Supervisor"       value={data.supervisor?.full_name || 'Not Assigned'} color="#22c55e" />
+        {data.co_supervisor ? (
+          <>
+            <StatCard label="Main Supervisor" value={data.supervisor?.full_name || 'Not Assigned'} color="#22c55e" />
+            <StatCard label="Co-Supervisor"   value={data.co_supervisor?.full_name || 'Not Assigned'} color="#0ea5e9" />
+          </>
+        ) : (
+          <StatCard label="Supervisor" value={data.supervisor?.full_name || 'Not Assigned'} color="#22c55e" />
+        )}
       </div>
+
+      {(data.supervisor || data.co_supervisor) && (
+        <div style={{ ...s.card, marginBottom: 16 }}>
+          <h3 style={s.cardTitle}>Assigned Supervision Team</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: data.co_supervisor ? '1fr 1fr' : '1fr', gap: 14 }}>
+            {data.supervisor && (
+              <div style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 10, padding: 14 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase', letterSpacing: 0.5 }}>Main Supervisor</span>
+                <h4 style={{ fontSize: 15, fontWeight: 700, color: '#fff', margin: '4px 0 2px' }}>{data.supervisor.full_name}</h4>
+                <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>{data.supervisor.department || 'Faculty'}</p>
+                {data.supervisor.email && <p style={{ fontSize: 12, color: '#6b7280', margin: '4px 0 0' }}>{data.supervisor.email}</p>}
+                {data.supervisor.expertise_areas && <p style={{ fontSize: 11, color: '#4ade80', margin: '6px 0 0' }}>Expertise: {data.supervisor.expertise_areas}</p>}
+              </div>
+            )}
+            {data.co_supervisor && (
+              <div style={{ background: 'rgba(14,165,233,0.06)', border: '1px solid rgba(14,165,233,0.2)', borderRadius: 10, padding: 14 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8', textTransform: 'uppercase', letterSpacing: 0.5 }}>Co-Supervisor</span>
+                <h4 style={{ fontSize: 15, fontWeight: 700, color: '#fff', margin: '4px 0 2px' }}>{data.co_supervisor.full_name}</h4>
+                <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>{data.co_supervisor.department || 'Faculty'}</p>
+                {data.co_supervisor.email && <p style={{ fontSize: 12, color: '#6b7280', margin: '4px 0 0' }}>{data.co_supervisor.email}</p>}
+                {data.co_supervisor.expertise_areas && <p style={{ fontSize: 11, color: '#38bdf8', margin: '6px 0 0' }}>Expertise: {data.co_supervisor.expertise_areas}</p>}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {p ? (
         <div style={s.card}>
@@ -103,6 +136,7 @@ function Dashboard({ data }) {
     </div>
   );
 }
+
 
 // ─── PROPOSAL FORM ────────────────────────────
 function ProposalForm({ onSubmit }) {
@@ -241,10 +275,11 @@ function AlertsTab({ alerts, reload }) {
 }
 
 // ─── MESSAGES TAB ─────────────────────────────
-function MessagesTab({ user, supervisor }) {
+function MessagesTab({ user, supervisor, coSupervisor }) {
   const [messages, setMessages] = useState([]);
   const [compose,  setCompose]  = useState(false);
-  const [msgForm,  setMsgForm]  = useState({ receiver_id: supervisor?.user_id ? String(supervisor.user_id) : '', subject: '', body: '' });
+  const defaultRecipient = supervisor?.user_id ? String(supervisor.user_id) : (coSupervisor?.user_id ? String(coSupervisor.user_id) : '');
+  const [msgForm,  setMsgForm]  = useState({ receiver_id: defaultRecipient, subject: '', body: '' });
   const [busy,     setBusy]     = useState(false);
 
   const fetchMessages = () => api.get('/messages').then(r => setMessages(r.data.messages || [])).catch(() => {});
@@ -257,7 +292,7 @@ function MessagesTab({ user, supervisor }) {
       await api.post('/messages', { ...msgForm, receiver_id: Number(msgForm.receiver_id) });
       toast.success('Message sent!');
       setCompose(false);
-      setMsgForm({ receiver_id: supervisor?.user_id ? String(supervisor.user_id) : '', subject: '', body: '' });
+      setMsgForm({ receiver_id: defaultRecipient, subject: '', body: '' });
       fetchMessages();
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Send failed.');
@@ -278,15 +313,25 @@ function MessagesTab({ user, supervisor }) {
       {compose && (
         <form onSubmit={handleSend} style={{ ...s.feedbackBox, marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <FormField label="Send To *">
-            {supervisor ? (
+            {(supervisor || coSupervisor) ? (
               <select style={s.input} value={msgForm.receiver_id} onChange={e => setMsgForm(p => ({...p, receiver_id: e.target.value}))} required>
-                <option value={supervisor.user_id}>My Supervisor — {supervisor.full_name}</option>
+                {supervisor && (
+                  <option value={supervisor.user_id}>
+                    Main Supervisor — {supervisor.full_name} ({supervisor.department || 'Faculty'})
+                  </option>
+                )}
+                {coSupervisor && (
+                  <option value={coSupervisor.user_id}>
+                    Co-Supervisor — {coSupervisor.full_name} ({coSupervisor.department || 'Faculty'})
+                  </option>
+                )}
               </select>
             ) : (
               <input style={s.input} type="number" value={msgForm.receiver_id}
                 onChange={e => setMsgForm(p => ({...p, receiver_id: e.target.value}))} required placeholder="User ID of recipient" />
             )}
           </FormField>
+
           <FormField label="Subject">
             <input style={s.input} value={msgForm.subject} onChange={e => setMsgForm(p => ({...p, subject: e.target.value}))} placeholder="Message subject" />
           </FormField>

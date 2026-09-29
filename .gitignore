@@ -17,10 +17,9 @@ __pycache__/
 # Database & Uploads
 *.db
 backend/spsems.db
-uploads/*
-!uploads/.gitkeep
-backend/uploads/*
-!backend/uploads/.gitkeep
+uploads/
+backend/uploads/
+
 
 # Environment variables
 .env

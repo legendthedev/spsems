@@ -52,15 +52,34 @@ def register_public(body: RegisterPublicRequest, db: Session = Depends(get_db)):
     }
 
 
+@router.get("/auth/supervisors-public")
+def get_supervisors_public(db: Session = Depends(get_db)):
+    rows = db.execute(
+        text("""SELECT s.supervisor_id, s.department, s.expertise_areas, u.full_name, u.email
+                FROM supervisors s
+                JOIN users u ON s.user_id=u.user_id
+                WHERE u.is_active=1
+                ORDER BY u.full_name ASC""")
+    ).fetchall()
+    return {"success": True, "supervisors": [dict(r._mapping) for r in rows]}
+
+
 @router.get("/admin/pending-users")
 def get_pending_users(db: Session = Depends(get_db), user: dict = Depends(require_role("admin"))):
     rows = db.execute(
         text("""SELECT u.user_id,u.username,u.full_name,u.email,u.role,u.phone,u.created_at,
              s.expertise_areas, s.department AS sup_dept, s.max_load,
-             st.matric_number, st.department AS stu_dept, st.level, st.research_domain
+             st.matric_number, st.department AS stu_dept, st.level, st.research_domain,
+             st.supervisor_id, st.co_supervisor_id,
+             u_sup.full_name AS supervisor_name,
+             u_co.full_name AS co_supervisor_name
            FROM users u
-           LEFT JOIN supervisors s  ON u.user_id=s.user_id
-           LEFT JOIN students    st ON u.user_id=st.user_id
+           LEFT JOIN supervisors s     ON u.user_id=s.user_id
+           LEFT JOIN students    st    ON u.user_id=st.user_id
+           LEFT JOIN supervisors sup   ON st.supervisor_id=sup.supervisor_id
+           LEFT JOIN users       u_sup ON sup.user_id=u_sup.user_id
+           LEFT JOIN supervisors sup_co ON st.co_supervisor_id=sup_co.supervisor_id
+           LEFT JOIN users       u_co  ON sup_co.user_id=u_co.user_id
            WHERE u.is_active=0
            ORDER BY u.created_at DESC""")
     ).fetchall()

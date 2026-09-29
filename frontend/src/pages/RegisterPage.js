@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { GraduationCap } from 'lucide-react';
+import { GraduationCap, Users, Info } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 
@@ -14,11 +14,23 @@ const LEVELS = ['100', '200', '300', '400', 'PGD', 'MSc', 'PhD'];
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const [busy,  setBusy]  = useState(false);
-  const [form,  setForm]  = useState({
+  const [busy, setBusy] = useState(false);
+  const [supervisors, setSupervisors] = useState([]);
+  const [form, setForm] = useState({
     full_name: '', username: '', email: '', password: '', confirm_password: '',
     phone: '', department: '', level: '', matric_number: '', research_domain: '',
+    main_supervisor_id: '',
   });
+
+  const isPostgrad = ['msc', 'phd'].includes((form.level || '').toLowerCase());
+
+  useEffect(() => {
+    api.get('/auth/supervisors-public')
+      .then(res => {
+        if (res.data?.supervisors) setSupervisors(res.data.supervisors);
+      })
+      .catch(() => {});
+  }, []);
 
   const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
 
@@ -31,16 +43,17 @@ export default function RegisterPage() {
     setBusy(true);
     try {
       await api.post('/auth/register-public', {
-        role:            'student',
-        full_name:       form.full_name,
-        username:        form.username,
-        email:           form.email,
-        password:        form.password,
-        phone:           form.phone || undefined,
-        department:      form.department,
-        level:           form.level,
-        matric_number:   form.matric_number,
-        research_domain: form.research_domain || undefined,
+        role:               'student',
+        full_name:          form.full_name,
+        username:           form.username,
+        email:              form.email,
+        password:           form.password,
+        phone:              form.phone || undefined,
+        department:         form.department,
+        level:              form.level,
+        matric_number:      form.matric_number,
+        research_domain:    form.research_domain || undefined,
+        main_supervisor_id: isPostgrad && form.main_supervisor_id ? parseInt(form.main_supervisor_id, 10) : undefined,
       });
       toast.success('Registration submitted. Awaiting admin approval before you can log in.');
       navigate('/login');
@@ -50,6 +63,7 @@ export default function RegisterPage() {
       setBusy(false);
     }
   };
+
 
   return (
     <div style={s.page}>
@@ -93,10 +107,50 @@ export default function RegisterPage() {
             </div>
             <Field label="Research Domain" value={form.research_domain} onChange={v => set('research_domain', v)} placeholder="e.g. Machine Learning" />
           </Row>
+
+          {isPostgrad && (
+            <div style={s.postgradCard}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+                <Users size={18} color="#22c55e" style={{ marginTop: 2, flexShrink: 0 }} />
+                <div>
+                  <h4 style={{ fontSize: 13, fontWeight: 700, color: '#4ade80', margin: 0 }}>
+                    Postgraduate Dual-Supervisor Allocation ({form.level})
+                  </h4>
+                  <p style={{ fontSize: 12, color: '#9ca3af', margin: '4px 0 0', lineHeight: 1.4 }}>
+                    As an {form.level} student, you will be assigned <strong>two supervisors</strong>: 1 Main Supervisor and 1 Co-Supervisor (automatically assigned at random from active faculty).
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label style={s.label}>Preferred Main Supervisor (Optional)</label>
+                <select
+                  style={s.input}
+                  value={form.main_supervisor_id}
+                  onChange={e => set('main_supervisor_id', e.target.value)}
+                >
+                  <option value="">Auto-assign Main Supervisor (recommended - lowest workload)</option>
+                  {supervisors
+                    .filter(sup => !form.department || sup.department === form.department)
+                    .map(sup => (
+                      <option key={sup.supervisor_id} value={sup.supervisor_id}>
+                        {sup.full_name} ({sup.department}) {sup.expertise_areas ? `— ${sup.expertise_areas}` : ''}
+                      </option>
+                    ))}
+                </select>
+                <p style={{ fontSize: 11, color: '#6b7280', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Info size={12} />
+                  Your Co-Supervisor will be assigned automatically at random upon registration.
+                </p>
+              </div>
+            </div>
+          )}
+
           <Row>
             <Field label="Password *"         type="password" value={form.password}         onChange={v => set('password', v)}         placeholder="Min 6 characters" required />
             <Field label="Confirm Password *"  type="password" value={form.confirm_password} onChange={v => set('confirm_password', v)} placeholder="Repeat password"   required />
           </Row>
+
 
           <div style={s.notice}>
             After submitting, your account will be reviewed by the HOD before you can log in.
@@ -169,6 +223,11 @@ const s = {
     background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.2)',
     borderRadius: 8, padding: '10px 14px', fontSize: 12, color: '#4ade80',
   },
+  postgradCard: {
+    background: 'rgba(22,163,74,0.06)', border: '1px solid rgba(22,163,74,0.25)',
+    borderRadius: 10, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10,
+  },
   footer: { textAlign: 'center', marginTop: 18, fontSize: 12, color: '#6b7280' },
   link:   { color: '#22c55e', fontWeight: 600, textDecoration: 'none' },
 };
+

@@ -135,7 +135,7 @@ function UsersTab({ users, reload }) {
       <table style={s.table}>
         <thead>
           <tr>
-            {['Name','Username','Role','Dept','Active','Action'].map(h => <th key={h} style={s.th}>{h}</th>)}
+            {['Name','Username','Role','Dept','Supervisors','Active','Action'].map(h => <th key={h} style={s.th}>{h}</th>)}
           </tr>
         </thead>
         <tbody>
@@ -145,6 +145,19 @@ function UsersTab({ users, reload }) {
               <td style={s.td}><code style={{ fontSize: 12 }}>{u.username}</code></td>
               <td style={s.td}><RoleBadge role={u.role} /></td>
               <td style={{ ...s.td, fontSize: 12, color: '#9ca3af' }}>{u.stu_dept || u.sup_dept || '—'}</td>
+              <td style={{ ...s.td, fontSize: 12 }}>
+                {u.role === 'student' ? (
+                  <div>
+                    {u.supervisor_name ? (
+                      <span style={{ color: '#4ade80', display: 'block', fontSize: 11 }}>Main: {u.supervisor_name}</span>
+                    ) : null}
+                    {u.co_supervisor_name ? (
+                      <span style={{ color: '#38bdf8', display: 'block', fontSize: 11 }}>Co: {u.co_supervisor_name}</span>
+                    ) : null}
+                    {!u.supervisor_name && !u.co_supervisor_name && <span style={{ color: '#6b7280' }}>—</span>}
+                  </div>
+                ) : '—'}
+              </td>
               <td style={s.td}>
                 <span style={{ color: u.is_active ? '#16a34a' : '#dc2626', fontWeight: 700, fontSize: 12 }}>
                   {u.is_active ? 'Active' : 'Inactive'}
@@ -160,6 +173,7 @@ function UsersTab({ users, reload }) {
           ))}
         </tbody>
       </table>
+
       {filtered.length === 0 && <p style={s.empty}>No users in this filter.</p>}
     </div>
   );
@@ -333,12 +347,20 @@ function ProjectsTab({ reload }) {
                   <td style={{ ...s.td, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 }}
                       title={p.title}>{p.title}</td>
                   <td style={{ ...s.td, fontSize: 12, color: '#9ca3af' }}>{p.student_dept || '—'}</td>
-                  <td style={{ ...s.td, fontSize: 12 }}>{p.supervisor_name || <span style={{ color: '#4b5563' }}>Unassigned</span>}</td>
+                  <td style={{ ...s.td, fontSize: 12 }}>
+                    <div>
+                      {p.supervisor_name || <span style={{ color: '#4b5563' }}>Unassigned</span>}
+                      {p.co_supervisor_name && (
+                        <div style={{ fontSize: 11, color: '#38bdf8', marginTop: 2 }}>Co: {p.co_supervisor_name}</div>
+                      )}
+                    </div>
+                  </td>
                   <td style={s.td}>
                     <span style={{ background: bg, color, padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 600, textTransform: 'capitalize', whiteSpace: 'nowrap' }}>
                       {p.status.replace('_', ' ')}
                     </span>
                   </td>
+
                   <td style={{ ...s.td, fontSize: 11, color: '#6b7280', whiteSpace: 'nowrap' }}>
                     {p.submitted_at ? new Date(p.submitted_at).toLocaleDateString() : '—'}
                   </td>

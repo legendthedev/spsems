@@ -45,6 +45,8 @@ class RegisterPublicRequest(BaseModel):
     level:           Optional[str] = "400"
     research_domain: Optional[str] = None
     enrollment_year: Optional[int] = None
+    supervisor_id:      Optional[int] = None
+    main_supervisor_id: Optional[int] = None
     # Supervisor fields
     expertise_areas: Optional[str] = None
     max_load:        Optional[int] = 5
@@ -65,8 +67,9 @@ class ProposalRequest(BaseModel):
     objectives: Optional[str] = None
 
 class ProjectStatusUpdate(BaseModel):
-    status:        ProjectStatusEnum
-    supervisor_id: Optional[int] = None
+    status:           ProjectStatusEnum
+    supervisor_id:    Optional[int] = None
+    co_supervisor_id: Optional[int] = None
 
 
 # ── SUBMISSION ────────────────────────────────────────────
@@ -101,8 +104,9 @@ class MessageRequest(BaseModel):
 # ── ADMIN ─────────────────────────────────────────────────
 
 class ManualAllocateRequest(BaseModel):
-    project_id:    int
-    supervisor_id: int
+    project_id:       int
+    supervisor_id:    int
+    co_supervisor_id: Optional[int] = None
 
 class ToggleActiveRequest(BaseModel):
     is_active: bool

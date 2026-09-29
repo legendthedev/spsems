@@ -44,45 +44,68 @@ def _risk_fallback(f: dict) -> dict:
 @router.get("/projects/dashboard")
 def student_dashboard(db: Session = Depends(get_db), user: dict = Depends(require_role("student"))):
     """Single endpoint the student portal frontend expects."""
-    proj = db.execute(
-        text("""SELECT p.*,
-             u_sup.full_name AS supervisor_name, u_sup.email AS supervisor_email,
-             u_sup.user_id AS supervisor_user_id,
-             s.expertise_areas, s.department AS sup_dept, s.supervisor_id,
-             (SELECT COUNT(*) FROM submissions WHERE project_id=p.project_id) AS total_submissions,
-             (SELECT COUNT(*) FROM milestones WHERE project_id=p.project_id AND status='completed') AS completed_milestones,
-             (SELECT COUNT(*) FROM milestones WHERE project_id=p.project_id) AS total_milestones,
-             (SELECT COUNT(*) FROM milestones WHERE project_id=p.project_id AND status='overdue') AS overdue_milestones,
-             (SELECT supervisor_comment FROM submissions WHERE project_id=p.project_id
-              AND supervisor_comment IS NOT NULL ORDER BY reviewed_at DESC LIMIT 1) AS feedback_latest
-           FROM projects p
-           JOIN students st ON p.student_id=st.student_id
-           LEFT JOIN supervisors s ON p.supervisor_id=s.supervisor_id
-           LEFT JOIN users u_sup ON s.user_id=u_sup.user_id
-           WHERE st.user_id=:uid ORDER BY p.submitted_at DESC LIMIT 1"""),
-        {"uid": user["user_id"]},
+    st = db.execute(
+        text("SELECT student_id, matric_number, department, level, supervisor_id, co_supervisor_id, project_id FROM students WHERE user_id=:uid"),
+        {"uid": user["user_id"]}
     ).fetchone()
 
-    if not proj:
-        return {"success": True, "project": None, "supervisor": None, "milestones": [], "submissions": []}
+    proj = None
+    if st:
+        proj = db.execute(
+            text("""SELECT p.*,
+                 (SELECT COUNT(*) FROM submissions WHERE project_id=p.project_id) AS total_submissions,
+                 (SELECT COUNT(*) FROM milestones WHERE project_id=p.project_id AND status='completed') AS completed_milestones,
+                 (SELECT COUNT(*) FROM milestones WHERE project_id=p.project_id) AS total_milestones,
+                 (SELECT COUNT(*) FROM milestones WHERE project_id=p.project_id AND status='overdue') AS overdue_milestones,
+                 (SELECT supervisor_comment FROM submissions WHERE project_id=p.project_id
+                  AND supervisor_comment IS NOT NULL ORDER BY reviewed_at DESC LIMIT 1) AS feedback_latest
+               FROM projects p
+               WHERE p.student_id=:sid ORDER BY p.submitted_at DESC LIMIT 1"""),
+            {"sid": st.student_id},
+        ).fetchone()
 
-    p   = dict(proj._mapping)
+    p = dict(proj._mapping) if proj else None
+    main_sid = (p.get("supervisor_id") if p else None) or (st.supervisor_id if st else None)
+    co_sid   = (p.get("co_supervisor_id") if p else None) or (st.co_supervisor_id if st else None)
+
+    supervisor = None
+    if main_sid:
+        s_row = db.execute(
+            text("""SELECT u.full_name, u.email, u.user_id, s.expertise_areas, s.department, s.supervisor_id
+                   FROM supervisors s JOIN users u ON s.user_id=u.user_id
+                   WHERE s.supervisor_id=:sid"""),
+            {"sid": main_sid}
+        ).fetchone()
+        if s_row:
+            supervisor = dict(s_row._mapping)
+
+    co_supervisor = None
+    if co_sid:
+        co_row = db.execute(
+            text("""SELECT u.full_name, u.email, u.user_id, s.expertise_areas, s.department, s.supervisor_id
+                   FROM supervisors s JOIN users u ON s.user_id=u.user_id
+                   WHERE s.supervisor_id=:sid"""),
+            {"sid": co_sid}
+        ).fetchone()
+        if co_row:
+            co_supervisor = dict(co_row._mapping)
+
+    if not p:
+        return {
+            "success":       True,
+            "project":       None,
+            "supervisor":    supervisor,
+            "co_supervisor": co_supervisor,
+            "milestones":    [],
+            "submissions":   [],
+        }
+
     pid = p["project_id"]
     completed = int(p.get("completed_milestones") or 0)
     total     = int(p.get("total_milestones") or 5)
 
     p["chapter_progress"] = round(completed / max(total, 1), 2)
     p["current_chapter"]  = min(completed + 1, 5)
-
-    supervisor = None
-    if p.get("supervisor_name"):
-        supervisor = {
-            "full_name":       p["supervisor_name"],
-            "email":           p.get("supervisor_email"),
-            "expertise_areas": p.get("expertise_areas"),
-            "department":      p.get("sup_dept"),
-            "user_id":         p.get("supervisor_user_id"),
-        }
 
     ms_rows = db.execute(
         text("SELECT * FROM milestones WHERE project_id=:pid ORDER BY due_date"), {"pid": pid}
@@ -99,12 +122,14 @@ def student_dashboard(db: Session = Depends(get_db), user: dict = Depends(requir
     ).fetchall()
 
     return {
-        "success":     True,
-        "project":     p,
-        "supervisor":  supervisor,
-        "milestones":  milestones,
-        "submissions": [dict(r._mapping) for r in subs],
+        "success":       True,
+        "project":       p,
+        "supervisor":    supervisor,
+        "co_supervisor": co_supervisor,
+        "milestones":    milestones,
+        "submissions":   [dict(r._mapping) for r in subs],
     }
+
 
 
 @router.post("/projects/submit", status_code=201)
@@ -119,7 +144,7 @@ async def submit_proposal_form(
 ):
     """Multipart alias for the proposal form in the student portal."""
     st = db.execute(
-        text("SELECT student_id, project_id FROM students WHERE user_id=:user_id"),
+        text("SELECT student_id, project_id, supervisor_id, co_supervisor_id FROM students WHERE user_id=:user_id"),
         {"user_id": user["user_id"]},
     ).fetchone()
     if not st:
@@ -148,9 +173,10 @@ async def submit_proposal_form(
 
     kw_vector = json.dumps([k.strip().lower() for k in (keywords or title).split(",") if k.strip()])
     result = db.execute(
-        text("""INSERT INTO projects (student_id,title,abstract,keywords,keyword_vector,duplication_score,status)
-           VALUES (:sid,:title,:abstract,:keywords,:kw,:dup,'pending')"""),
-        {"sid": st.student_id, "title": title, "abstract": abstract,
+        text("""INSERT INTO projects (student_id,supervisor_id,co_supervisor_id,title,abstract,keywords,keyword_vector,duplication_score,status)
+           VALUES (:sid,:sup_id,:co_sup_id,:title,:abstract,:keywords,:kw,:dup,'pending')"""),
+        {"sid": st.student_id, "sup_id": st.supervisor_id, "co_sup_id": st.co_supervisor_id,
+         "title": title, "abstract": abstract,
          "keywords": keywords or "", "kw": kw_vector, "dup": dup_score},
     )
     db.commit()
@@ -199,6 +225,20 @@ async def submit_proposal_form(
             {"uid": a.user_id, "pid": project_id,
              "msg": f'"{title[:60]}" submitted — awaiting your review.'},
         )
+    sup_uids = []
+    if st.supervisor_id:
+        u1 = db.execute(text("SELECT user_id FROM supervisors WHERE supervisor_id=:sid"), {"sid": st.supervisor_id}).fetchone()
+        if u1: sup_uids.append(u1.user_id)
+    if st.co_supervisor_id:
+        u2 = db.execute(text("SELECT user_id FROM supervisors WHERE supervisor_id=:sid"), {"sid": st.co_supervisor_id}).fetchone()
+        if u2: sup_uids.append(u2.user_id)
+    for suid in set(sup_uids):
+        db.execute(
+            text("""INSERT INTO alerts (user_id,project_id,alert_type,title,message,severity)
+               VALUES (:uid,:pid,'system','New Student Proposal',:msg,'info')"""),
+            {"uid": suid, "pid": project_id,
+             "msg": f'Student submitted project proposal: "{title[:60]}"'},
+        )
     db.commit()
     return {"success": True, "message": "Proposal submitted. Awaiting HOD approval.", "project_id": project_id}
 
@@ -245,17 +285,20 @@ async def upload_chapter(
     )
 
     proj = db.execute(
-        text("""SELECT s.user_id AS sup_uid FROM projects p
-           JOIN supervisors s ON p.supervisor_id=s.supervisor_id WHERE p.project_id=:pid"""),
+        text("""SELECT s1.user_id AS sup_uid, s2.user_id AS co_sup_uid FROM projects p
+           LEFT JOIN supervisors s1 ON p.supervisor_id=s1.supervisor_id
+           LEFT JOIN supervisors s2 ON p.co_supervisor_id=s2.supervisor_id
+           WHERE p.project_id=:pid"""),
         {"pid": st.project_id},
     ).fetchone()
-    if proj and proj.sup_uid:
-        db.execute(
-            text("""INSERT INTO alerts (user_id,project_id,alert_type,title,message,severity)
-               VALUES (:uid,:pid,'feedback','New Chapter Submitted',:msg,'info')"""),
-            {"uid": proj.sup_uid, "pid": st.project_id,
-             "msg": f"{user['full_name']} submitted {chapter_val} (v{version}). Please review."},
-        )
+    if proj:
+        for suid in filter(None, [proj.sup_uid, proj.co_sup_uid]):
+            db.execute(
+                text("""INSERT INTO alerts (user_id,project_id,alert_type,title,message,severity)
+                   VALUES (:uid,:pid,'feedback','New Chapter Submitted',:msg,'info')"""),
+                {"uid": suid, "pid": st.project_id,
+                 "msg": f"{user['full_name']} submitted {chapter_val} (v{version}). Please review."},
+            )
     db.commit()
     return {"success": True, "message": "Chapter uploaded successfully.", "version": version}
 
@@ -267,7 +310,7 @@ def submit_proposal(
     user: dict    = Depends(require_role("student")),
 ):
     st = db.execute(
-        text("SELECT student_id, project_id FROM students WHERE user_id=:user_id"),
+        text("SELECT student_id, project_id, supervisor_id, co_supervisor_id FROM students WHERE user_id=:user_id"),
         {"user_id": user["user_id"]},
     ).fetchone()
     if not st:
@@ -299,10 +342,12 @@ def submit_proposal(
 
     kw_vector = json.dumps([k.strip().lower() for k in (body.keywords or body.title).split(",") if k.strip()])
     result = db.execute(
-        text("""INSERT INTO projects (student_id,title,abstract,keywords,keyword_vector,duplication_score,status)
-           VALUES (:student_id,:title,:abstract,:keywords,:keyword_vector,:duplication_score,'pending')"""),
+        text("""INSERT INTO projects (student_id,supervisor_id,co_supervisor_id,title,abstract,keywords,keyword_vector,duplication_score,status)
+           VALUES (:student_id,:supervisor_id,:co_supervisor_id,:title,:abstract,:keywords,:keyword_vector,:duplication_score,'pending')"""),
         {
             "student_id":        st.student_id,
+            "supervisor_id":     st.supervisor_id,
+            "co_supervisor_id":  st.co_supervisor_id,
             "title":             body.title,
             "abstract":          body.abstract,
             "keywords":          body.keywords or "",
@@ -342,6 +387,20 @@ def submit_proposal(
             {"user_id": a.user_id, "project_id": project_id,
              "message": f'"{body.title[:60]}" submitted — awaiting your review.'},
         )
+    sup_uids = []
+    if st.supervisor_id:
+        u1 = db.execute(text("SELECT user_id FROM supervisors WHERE supervisor_id=:sid"), {"sid": st.supervisor_id}).fetchone()
+        if u1: sup_uids.append(u1.user_id)
+    if st.co_supervisor_id:
+        u2 = db.execute(text("SELECT user_id FROM supervisors WHERE supervisor_id=:sid"), {"sid": st.co_supervisor_id}).fetchone()
+        if u2: sup_uids.append(u2.user_id)
+    for suid in set(sup_uids):
+        db.execute(
+            text("""INSERT INTO alerts (user_id,project_id,alert_type,title,message,severity)
+               VALUES (:uid,:pid,'system','New Student Proposal',:msg,'info')"""),
+            {"uid": suid, "pid": project_id,
+             "msg": f'Student submitted project proposal: "{body.title[:60]}"'},
+        )
     db.commit()
     return {"success": True, "message": "Proposal submitted. Awaiting HOD approval.", "project_id": project_id}
 
@@ -349,18 +408,23 @@ def submit_proposal(
 @router.get("/projects/my")
 def get_student_project(db: Session = Depends(get_db), user: dict = Depends(require_role("student"))):
     proj = db.execute(
-        text("""SELECT p.*, u.full_name AS supervisor_name, s.expertise_areas, s.department AS sup_dept, s.supervisor_id,
+        text("""SELECT p.*,
+             u.full_name AS supervisor_name, s.expertise_areas, s.department AS sup_dept, s.supervisor_id,
+             u_co.full_name AS co_supervisor_name, sco.expertise_areas AS co_expertise_areas, sco.department AS co_sup_dept, sco.supervisor_id AS co_supervisor_id,
              (SELECT COUNT(*) FROM submissions WHERE project_id=p.project_id) AS total_submissions,
              (SELECT COUNT(*) FROM milestones  WHERE project_id=p.project_id AND status='completed') AS completed_milestones,
              (SELECT COUNT(*) FROM milestones  WHERE project_id=p.project_id) AS total_milestones,
              (SELECT COUNT(*) FROM milestones  WHERE project_id=p.project_id AND status='overdue')   AS overdue_milestones
            FROM projects p
-           LEFT JOIN supervisors s ON p.supervisor_id=s.supervisor_id
-           LEFT JOIN users u       ON s.user_id=u.user_id
-           JOIN students st        ON p.student_id=st.student_id
+           LEFT JOIN supervisors s   ON p.supervisor_id=s.supervisor_id
+           LEFT JOIN users u         ON s.user_id=u.user_id
+           LEFT JOIN supervisors sco ON p.co_supervisor_id=sco.supervisor_id
+           LEFT JOIN users u_co      ON sco.user_id=u_co.user_id
+           JOIN students st          ON p.student_id=st.student_id
            WHERE st.user_id=:user_id ORDER BY p.submitted_at DESC LIMIT 1"""),
         {"user_id": user["user_id"]},
     ).fetchone()
+
 
     if not proj:
         return {"success": True, "project": None, "milestones": [], "submissions": [], "alerts": [], "messages": []}
@@ -577,6 +641,7 @@ def get_all_projects(db: Session = Depends(get_db), user: dict = Depends(require
     base = """
       SELECT p.*, u_st.full_name AS student_name, st.matric_number, st.department AS student_dept, st.level,
              u_sup.full_name AS supervisor_name, sup.department AS supervisor_dept,
+             u_co.full_name AS co_supervisor_name, sup_co.department AS co_supervisor_dept,
              (SELECT COUNT(*) FROM submissions WHERE project_id=p.project_id) AS submission_count,
              (SELECT COUNT(*) FROM milestones  WHERE project_id=p.project_id AND status='completed') AS ms_done,
              (SELECT COUNT(*) FROM milestones  WHERE project_id=p.project_id) AS ms_total,
@@ -584,8 +649,10 @@ def get_all_projects(db: Session = Depends(get_db), user: dict = Depends(require
       FROM projects p
       JOIN students st ON p.student_id=st.student_id
       JOIN users u_st  ON st.user_id=u_st.user_id
-      LEFT JOIN supervisors sup ON p.supervisor_id=sup.supervisor_id
-      LEFT JOIN users u_sup     ON sup.user_id=u_sup.user_id
+      LEFT JOIN supervisors sup     ON p.supervisor_id=sup.supervisor_id
+      LEFT JOIN users u_sup         ON sup.user_id=u_sup.user_id
+      LEFT JOIN supervisors sup_co  ON p.co_supervisor_id=sup_co.supervisor_id
+      LEFT JOIN users u_co          ON sup_co.user_id=u_co.user_id
     """
     if user["role"] == "supervisor":
         sup_row = db.execute(
@@ -593,7 +660,7 @@ def get_all_projects(db: Session = Depends(get_db), user: dict = Depends(require
         ).fetchone()
         if sup_row:
             rows = db.execute(
-                text(base + " WHERE p.supervisor_id=:sid ORDER BY p.submitted_at DESC"),
+                text(base + " WHERE (p.supervisor_id=:sid OR p.co_supervisor_id=:sid OR st.supervisor_id=:sid OR st.co_supervisor_id=:sid) ORDER BY p.submitted_at DESC"),
                 {"sid": sup_row.supervisor_id},
             ).fetchall()
         else:
@@ -618,6 +685,9 @@ def update_project_status(
     if body.supervisor_id:
         set_parts.append("supervisor_id=:supervisor_id")
         params["supervisor_id"] = body.supervisor_id
+    if body.co_supervisor_id:
+        set_parts.append("co_supervisor_id=:co_supervisor_id")
+        params["co_supervisor_id"] = body.co_supervisor_id
 
     db.execute(
         text(f"UPDATE projects SET {', '.join(set_parts)} WHERE project_id=:project_id"),
@@ -632,6 +702,15 @@ def update_project_status(
         db.execute(
             text("UPDATE supervisors SET current_load=current_load+1 WHERE supervisor_id=:sid"),
             {"sid": body.supervisor_id},
+        )
+    if body.co_supervisor_id:
+        db.execute(
+            text("UPDATE students SET co_supervisor_id=:sid WHERE project_id=:pid"),
+            {"sid": body.co_supervisor_id, "pid": project_id},
+        )
+        db.execute(
+            text("UPDATE supervisors SET current_load=current_load+1 WHERE supervisor_id=:sid"),
+            {"sid": body.co_supervisor_id},
         )
 
     proj = db.execute(
@@ -650,8 +729,9 @@ def update_project_status(
                 "pid":   project_id,
                 "title": f"Project {label}",
                 "message": f'Your project "{(proj.title or "")[:60]}" has been {body.status}' +
-                           (" and a supervisor assigned." if body.supervisor_id else "."),
+                           (" and supervisor(s) updated." if (body.supervisor_id or body.co_supervisor_id) else "."),
             },
         )
     db.commit()
     return {"success": True, "message": f"Project marked as {body.status}."}
+

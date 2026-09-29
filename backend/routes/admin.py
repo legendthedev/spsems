@@ -52,13 +52,21 @@ def get_all_users(db: Session = Depends(get_db), user: dict = Depends(require_ro
         text("""SELECT u.user_id, u.username, u.full_name, u.email, u.role,
                   u.is_active, u.phone, u.created_at,
                   s.supervisor_id, s.expertise_areas, s.max_load, s.current_load, s.department AS sup_dept,
-                  st.student_id, st.matric_number, st.department AS stu_dept, st.level, st.research_domain
+                  st.student_id, st.matric_number, st.department AS stu_dept, st.level, st.research_domain,
+                  st.supervisor_id, st.co_supervisor_id,
+                  u_sup.full_name AS supervisor_name,
+                  u_co.full_name AS co_supervisor_name
            FROM users u
-           LEFT JOIN supervisors s  ON u.user_id=s.user_id
-           LEFT JOIN students    st ON u.user_id=st.user_id
+           LEFT JOIN supervisors s        ON u.user_id=s.user_id
+           LEFT JOIN students    st       ON u.user_id=st.user_id
+           LEFT JOIN supervisors sup_main ON st.supervisor_id=sup_main.supervisor_id
+           LEFT JOIN users       u_sup    ON sup_main.user_id=u_sup.user_id
+           LEFT JOIN supervisors sup_co   ON st.co_supervisor_id=sup_co.supervisor_id
+           LEFT JOIN users       u_co     ON sup_co.user_id=u_co.user_id
            ORDER BY u.created_at DESC""")
     ).fetchall()
     return {"success": True, "users": [dict(r._mapping) for r in rows]}
+
 
 
 @router.get("/supervisors")
@@ -248,6 +256,29 @@ def manual_allocate(
         {"student_id": proj.student_id, "sid": body.supervisor_id, "by": user["user_id"]},
     )
 
+    if body.co_supervisor_id:
+        co_sup = db.execute(text("SELECT * FROM supervisors WHERE supervisor_id=:sid"), {"sid": body.co_supervisor_id}).fetchone()
+        if co_sup:
+            db.execute(
+                text("UPDATE projects SET co_supervisor_id=:sid WHERE project_id=:pid"),
+                {"sid": body.co_supervisor_id, "pid": body.project_id},
+            )
+            db.execute(
+                text("UPDATE students SET co_supervisor_id=:sid WHERE student_id=:student_id"),
+                {"sid": body.co_supervisor_id, "student_id": proj.student_id},
+            )
+            db.execute(
+                text("UPDATE supervisors SET current_load=current_load+1 WHERE supervisor_id=:sid"),
+                {"sid": body.co_supervisor_id},
+            )
+            co_sup_user = db.execute(text("SELECT user_id FROM supervisors WHERE supervisor_id=:sid"), {"sid": body.co_supervisor_id}).fetchone()
+            if co_sup_user:
+                db.execute(
+                    text("""INSERT INTO alerts (user_id,project_id,alert_type,title,message,severity)
+                       VALUES (:uid,:pid,'allocation','Co-Supervisor Assignment',:msg,'info')"""),
+                    {"uid": co_sup_user.user_id, "pid": body.project_id, "msg": f'You have been assigned as co-supervisor for project: "{proj.title[:60]}"'},
+                )
+
     stu = db.execute(
         text("SELECT u.user_id FROM students st JOIN users u ON st.user_id=u.user_id WHERE st.student_id=:sid"),
         {"sid": proj.student_id},
@@ -265,6 +296,7 @@ def manual_allocate(
                 "message": f"The HOD has manually assigned {sup_user.full_name if sup_user else 'a supervisor'} to your project.",
             },
         )
+
     db.commit()
     return {"success": True, "message": "Manual allocation successful."}
 

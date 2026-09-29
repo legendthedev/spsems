@@ -40,11 +40,16 @@ def get_dashboard(db: Session = Depends(get_db), user: dict = Depends(require_ro
              (SELECT COUNT(*) FROM milestones  WHERE project_id=p.project_id AND status='completed') AS ms_done,
              (SELECT COUNT(*) FROM milestones  WHERE project_id=p.project_id)                        AS ms_total,
              (SELECT COUNT(*) FROM milestones  WHERE project_id=p.project_id AND status='overdue')   AS ms_overdue,
-             COALESCE((SELECT CAST(julianday('now') - julianday(MAX(COALESCE(submitted_at, uploaded_at))) AS INTEGER) FROM submissions WHERE project_id=p.project_id),NULL) AS days_inactive
+             COALESCE((SELECT CAST(julianday('now') - julianday(MAX(COALESCE(submitted_at, uploaded_at))) AS INTEGER) FROM submissions WHERE project_id=p.project_id),NULL) AS days_inactive,
+             CASE
+               WHEN st.co_supervisor_id=:sid OR (st.supervisor_id != :sid AND p.co_supervisor_id=:sid) THEN 'Co-Supervisor'
+               ELSE 'Main Supervisor'
+             END AS supervisor_role
            FROM students st
            JOIN users u    ON st.user_id=u.user_id
            LEFT JOIN projects p ON st.project_id=p.project_id
-           WHERE st.supervisor_id=:sid ORDER BY p.risk_score DESC NULLS LAST"""),
+           WHERE st.supervisor_id=:sid OR st.co_supervisor_id=:sid OR p.supervisor_id=:sid OR p.co_supervisor_id=:sid
+           ORDER BY p.risk_score DESC NULLS LAST"""),
         {"sid": sid},
     ).fetchall()
 
@@ -58,7 +63,7 @@ def get_dashboard(db: Session = Depends(get_db), user: dict = Depends(require_ro
            JOIN projects p  ON sub.project_id=p.project_id
            JOIN students st ON sub.student_id=st.student_id
            JOIN users u     ON st.user_id=u.user_id
-           WHERE p.supervisor_id=:sid AND sub.status='submitted'
+           WHERE (p.supervisor_id=:sid OR p.co_supervisor_id=:sid OR st.supervisor_id=:sid OR st.co_supervisor_id=:sid) AND sub.status='submitted'
            ORDER BY COALESCE(sub.submitted_at, sub.uploaded_at) DESC"""),
         {"sid": sid},
     ).fetchall()
@@ -67,7 +72,7 @@ def get_dashboard(db: Session = Depends(get_db), user: dict = Depends(require_ro
         recent_alerts = db.execute(
             text("""SELECT a.* FROM alerts a
                JOIN projects p ON a.project_id=p.project_id
-               WHERE p.supervisor_id=:sid ORDER BY a.triggered_at DESC LIMIT 20"""),
+               WHERE (p.supervisor_id=:sid OR p.co_supervisor_id=:sid) ORDER BY a.triggered_at DESC LIMIT 20"""),
             {"sid": sid},
         ).fetchall()
     except Exception:
@@ -75,7 +80,7 @@ def get_dashboard(db: Session = Depends(get_db), user: dict = Depends(require_ro
             recent_alerts = db.execute(
                 text("""SELECT a.* FROM alerts a
                    JOIN projects p ON a.project_id=p.project_id
-                   WHERE p.supervisor_id=:sid ORDER BY a.created_at DESC LIMIT 20"""),
+                   WHERE (p.supervisor_id=:sid OR p.co_supervisor_id=:sid) ORDER BY a.created_at DESC LIMIT 20"""),
                 {"sid": sid},
             ).fetchall()
         except Exception:
@@ -83,7 +88,7 @@ def get_dashboard(db: Session = Depends(get_db), user: dict = Depends(require_ro
                 recent_alerts = db.execute(
                     text("""SELECT a.* FROM alerts a
                        JOIN projects p ON a.project_id=p.project_id
-                       WHERE p.supervisor_id=:sid ORDER BY a.alert_id DESC LIMIT 20"""),
+                       WHERE (p.supervisor_id=:sid OR p.co_supervisor_id=:sid) ORDER BY a.alert_id DESC LIMIT 20"""),
                     {"sid": sid},
                 ).fetchall()
             except Exception:
@@ -121,9 +126,19 @@ def get_project_submissions(
     if not sup:
         raise HTTPException(403, "Not a supervisor.")
     proj = db.execute(
-        text("SELECT supervisor_id FROM projects WHERE project_id=:pid"), {"pid": project_id}
+        text("SELECT supervisor_id, co_supervisor_id FROM projects WHERE project_id=:pid"), {"pid": project_id}
     ).fetchone()
-    if not proj or proj.supervisor_id != sup.supervisor_id:
+    st = db.execute(
+        text("SELECT supervisor_id, co_supervisor_id FROM students WHERE project_id=:pid"), {"pid": project_id}
+    ).fetchone()
+    allowed_sids = set()
+    if proj:
+        if proj.supervisor_id: allowed_sids.add(proj.supervisor_id)
+        if getattr(proj, "co_supervisor_id", None): allowed_sids.add(proj.co_supervisor_id)
+    if st:
+        if st.supervisor_id: allowed_sids.add(st.supervisor_id)
+        if getattr(st, "co_supervisor_id", None): allowed_sids.add(st.co_supervisor_id)
+    if sup.supervisor_id not in allowed_sids:
         raise HTTPException(403, "Access denied.")
     rows = db.execute(
         text("""SELECT sub.*, u.full_name AS student_name
@@ -144,9 +159,8 @@ def download_submission_file(
     user:   dict    = Depends(require_role("supervisor", "admin")),
 ):
     sub = db.execute(
-        text("""SELECT sub.file_path, sub.file_name, p.supervisor_id
+        text("""SELECT sub.file_path, sub.file_name, sub.project_id, sub.student_id
                FROM submissions sub
-               JOIN projects p ON sub.project_id = p.project_id
                WHERE sub.doc_id = :doc_id"""),
         {"doc_id": doc_id},
     ).fetchone()
@@ -158,8 +172,21 @@ def download_submission_file(
             text("SELECT supervisor_id FROM supervisors WHERE user_id=:uid"),
             {"uid": user["user_id"]},
         ).fetchone()
-        if not sup_row or sub.supervisor_id != sup_row.supervisor_id:
+        if not sup_row:
             raise HTTPException(403, "Access denied.")
+        sid = sup_row.supervisor_id
+        p_row = db.execute(text("SELECT supervisor_id, co_supervisor_id FROM projects WHERE project_id=:pid"), {"pid": sub.project_id}).fetchone() if getattr(sub, "project_id", None) else None
+        st_row = db.execute(text("SELECT supervisor_id, co_supervisor_id FROM students WHERE student_id=:sid"), {"sid": sub.student_id}).fetchone() if getattr(sub, "student_id", None) else None
+        allowed_sids = set()
+        if p_row:
+            if p_row.supervisor_id: allowed_sids.add(p_row.supervisor_id)
+            if getattr(p_row, "co_supervisor_id", None): allowed_sids.add(p_row.co_supervisor_id)
+        if st_row:
+            if st_row.supervisor_id: allowed_sids.add(st_row.supervisor_id)
+            if getattr(st_row, "co_supervisor_id", None): allowed_sids.add(st_row.co_supervisor_id)
+        if sid not in allowed_sids:
+            raise HTTPException(403, "Access denied.")
+
 
     file_path = sub.file_path or ""
     if not os.path.isabs(file_path):

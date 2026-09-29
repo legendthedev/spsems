@@ -38,7 +38,8 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
     rows = db.execute(
         text("""SELECT u.*,
              s.supervisor_id, s.expertise_areas, s.max_load, s.current_load, s.department AS sup_dept,
-             st.student_id, st.matric_number, st.department AS stu_dept, st.level, st.project_id
+             st.student_id, st.matric_number, st.department AS stu_dept, st.level, st.project_id,
+             st.supervisor_id AS student_sup_id, st.co_supervisor_id
            FROM users u
            LEFT JOIN supervisors s  ON u.user_id=s.user_id
            LEFT JOIN students    st ON u.user_id=st.user_id
@@ -59,13 +60,14 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid credentials.")
 
     payload = {
-        "user_id":       row["user_id"],
-        "username":      row["username"],
-        "role":          row["role"],
-        "full_name":     row["full_name"],
-        "email":         row["email"],
-        "supervisor_id": row.get("supervisor_id"),
-        "student_id":    row.get("student_id"),
+        "user_id":          row["user_id"],
+        "username":         row["username"],
+        "role":             row["role"],
+        "full_name":        row["full_name"],
+        "email":            row["email"],
+        "supervisor_id":    row.get("supervisor_id") or row.get("student_sup_id"),
+        "co_supervisor_id": row.get("co_supervisor_id"),
+        "student_id":       row.get("student_id"),
     }
     token = create_access_token(payload)
     return {
@@ -74,14 +76,15 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
         "token": token,
         "user": {
             **payload,
-            "sup_dept":        row.get("sup_dept"),
-            "stu_dept":        row.get("stu_dept"),
-            "matric_number":   row.get("matric_number"),
-            "level":           row.get("level"),
-            "project_id":      row.get("project_id"),
-            "expertise_areas": row.get("expertise_areas"),
-            "max_load":        row.get("max_load"),
-            "current_load":    row.get("current_load"),
+            "sup_dept":         row.get("sup_dept"),
+            "stu_dept":         row.get("stu_dept"),
+            "matric_number":    row.get("matric_number"),
+            "level":            row.get("level"),
+            "project_id":       row.get("project_id"),
+            "expertise_areas":  row.get("expertise_areas"),
+            "max_load":         row.get("max_load"),
+            "current_load":     row.get("current_load"),
+            "co_supervisor_id": row.get("co_supervisor_id"),
         },
     }
 
@@ -101,7 +104,8 @@ def profile(current: dict = Depends(get_current_user), db: Session = Depends(get
     row = db.execute(
         text("""SELECT u.user_id,u.username,u.email,u.full_name,u.role,u.phone,u.avatar_url,u.created_at,
              s.supervisor_id,s.expertise_areas,s.max_load,s.current_load,s.department AS sup_dept,s.bio,
-             st.student_id,st.matric_number,st.department AS stu_dept,st.level,st.project_id,st.research_domain
+             st.student_id,st.matric_number,st.department AS stu_dept,st.level,st.project_id,st.research_domain,
+             st.supervisor_id AS student_sup_id, st.co_supervisor_id
            FROM users u
            LEFT JOIN supervisors s  ON u.user_id=s.user_id
            LEFT JOIN students    st ON u.user_id=st.user_id
@@ -190,17 +194,117 @@ def _do_register(body, db: Session) -> int:
             },
         )
     elif body.role == "student":
+        import random
+        from datetime import datetime
+
+        level_str = (body.level or "400").strip()
+        level_clean = level_str.lower()
+        is_postgrad = level_clean in ("msc", "phd", "masters", "doctorate")
+
+        main_sup_id = getattr(body, "main_supervisor_id", None) or getattr(body, "supervisor_id", None)
+        co_sup_id = None
+
+        if is_postgrad:
+            dept = body.department or "Computer Science"
+            dept_sups = db.execute(
+                text("""SELECT s.supervisor_id FROM supervisors s
+                        JOIN users u ON s.user_id=u.user_id
+                        WHERE u.is_active=1 AND s.department=:dept"""),
+                {"dept": dept}
+            ).fetchall()
+            all_sups = [r[0] for r in dept_sups]
+
+            if not all_sups:
+                fallback_sups = db.execute(
+                    text("""SELECT s.supervisor_id FROM supervisors s
+                            JOIN users u ON s.user_id=u.user_id
+                            WHERE u.is_active=1""")
+                ).fetchall()
+                all_sups = [r[0] for r in fallback_sups]
+
+            if all_sups:
+                # 1. Main Supervisor: use student's choice if valid, else least-loaded supervisor
+                if main_sup_id and main_sup_id in all_sups:
+                    pass
+                else:
+                    if len(all_sups) == 1:
+                        main_sup_id = all_sups[0]
+                    else:
+                        placeholders = ",".join([f":sid_{i}" for i in range(len(all_sups))])
+                        params = {f"sid_{i}": sid for i, sid in enumerate(all_sups)}
+                        least_loaded = db.execute(
+                            text(f"""SELECT s.supervisor_id FROM supervisors s
+                                    JOIN users u ON s.user_id=u.user_id
+                                    WHERE u.is_active=1 AND s.supervisor_id IN ({placeholders})
+                                    ORDER BY s.current_load ASC LIMIT 1"""),
+                            params
+                        ).fetchone()
+                        main_sup_id = least_loaded[0] if least_loaded else all_sups[0]
+
+                # 2. Co-Supervisor: MUST be assigned at random from remaining supervisors
+                pool_for_co = [sid for sid in all_sups if sid != main_sup_id]
+                if pool_for_co:
+                    co_sup_id = random.choice(pool_for_co)
+                else:
+                    # If no other supervisor in the same department, pick at random from other departments
+                    other_sups = db.execute(
+                        text("""SELECT s.supervisor_id FROM supervisors s
+                                JOIN users u ON s.user_id=u.user_id
+                                WHERE u.is_active=1 AND s.supervisor_id != :main_id"""),
+                        {"main_id": main_sup_id}
+                    ).fetchall()
+                    if other_sups:
+                        co_sup_id = random.choice([r[0] for r in other_sups])
+
         db.execute(
-            text("""INSERT INTO students (user_id,matric_number,department,level,research_domain,enrollment_year)
-               VALUES (:user_id,:matric_number,:department,:level,:research_domain,:enrollment_year)"""),
+            text("""INSERT INTO students (user_id,matric_number,department,level,supervisor_id,co_supervisor_id,research_domain,enrollment_year)
+               VALUES (:user_id,:matric_number,:department,:level,:supervisor_id,:co_supervisor_id,:research_domain,:enrollment_year)"""),
             {
-                "user_id":         user_id,
-                "matric_number":   body.matric_number or "",
-                "department":      body.department or "Computer Science",
-                "level":           body.level or "400",
-                "research_domain": body.research_domain,
-                "enrollment_year": body.enrollment_year or datetime.now().year,
+                "user_id":          user_id,
+                "matric_number":    body.matric_number or "",
+                "department":       body.department or "Computer Science",
+                "level":            level_str,
+                "supervisor_id":    main_sup_id,
+                "co_supervisor_id": co_sup_id,
+                "research_domain":  body.research_domain,
+                "enrollment_year":  body.enrollment_year or datetime.now().year,
             },
         )
+
+        # Notify supervisors and increment load
+        if main_sup_id:
+            try:
+                db.execute(text("UPDATE supervisors SET current_load=current_load+1 WHERE supervisor_id=:sid"), {"sid": main_sup_id})
+                sup_user = db.execute(text("SELECT user_id FROM supervisors WHERE supervisor_id=:sid"), {"sid": main_sup_id}).fetchone()
+                if sup_user:
+                    db.execute(
+                        text("""INSERT INTO alerts (user_id,alert_type,title,message,severity)
+                               VALUES (:uid,'system',:title,:msg,'info')"""),
+                        {
+                            "uid": sup_user[0],
+                            "title": f"New Supervisee: {body.full_name} ({level_str})",
+                            "msg": f"You have been assigned as the Main Supervisor for {body.full_name} ({body.matric_number or body.username}, {level_str} in {body.department}).",
+                        }
+                    )
+            except Exception:
+                pass
+
+        if co_sup_id:
+            try:
+                db.execute(text("UPDATE supervisors SET current_load=current_load+1 WHERE supervisor_id=:sid"), {"sid": co_sup_id})
+                co_user = db.execute(text("SELECT user_id FROM supervisors WHERE supervisor_id=:sid"), {"sid": co_sup_id}).fetchone()
+                if co_user:
+                    db.execute(
+                        text("""INSERT INTO alerts (user_id,alert_type,title,message,severity)
+                               VALUES (:uid,'system',:title,:msg,'info')"""),
+                        {
+                            "uid": co_user[0],
+                            "title": f"New Co-Supervisee (Random Allocation): {body.full_name}",
+                            "msg": f"You have been assigned at random as Co-Supervisor for {body.full_name} ({body.matric_number or body.username}, {level_str} in {body.department}).",
+                        }
+                    )
+            except Exception:
+                pass
+
     db.commit()
     return user_id
