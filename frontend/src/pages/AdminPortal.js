@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { LayoutDashboard, UserCog, Zap, Shuffle, History, Bell, LogOut, FolderOpen, BarChart2, Cpu } from 'lucide-react';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function AdminPortal() {
   const { user, logout, refreshUser } = useAuth();
@@ -1166,7 +1167,7 @@ function Sidebar({ role, active, onTab, onLogout, unread }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
           <img src="/kwasu.png" alt="KWASU" style={s.logoImg} />
           <div>
-            <div style={{ color: '#ffffff', fontWeight: 800, fontSize: 16, letterSpacing: '0.5px', lineHeight: 1.2 }}>KWASU</div>
+            <div style={{ color: 'var(--text-primary, #ffffff)', fontWeight: 800, fontSize: 16, letterSpacing: '0.5px', lineHeight: 1.2 }}>KWASU</div>
             <div style={{ color: '#22c55e', fontSize: 10, fontWeight: 700, letterSpacing: '1px' }}>SPSEMS</div>
           </div>
         </div>
@@ -1194,11 +1195,14 @@ function TopBar({ title, user, onProfile }) {
   return (
     <div style={s.topbar}>
       <h2 style={s.topTitle}>{title}</h2>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={onProfile} title="View profile">
-        {user?.avatar_url
-          ? <img src={user.avatar_url} alt="avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: '2px solid #16a34a' }} />
-          : <div style={s.avatar}>{user?.full_name?.[0] || 'A'}</div>}
-        <span style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb' }}>{user?.full_name}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <ThemeToggle />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={onProfile} title="View profile">
+          {user?.avatar_url
+            ? <img src={user.avatar_url} alt="avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: '2px solid #16a34a' }} />
+            : <div style={s.avatar}>{user?.full_name?.[0] || 'A'}</div>}
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary, #e5e7eb)' }}>{user?.full_name}</span>
+        </div>
       </div>
     </div>
   );
@@ -1206,8 +1210,8 @@ function TopBar({ title, user, onProfile }) {
 
 function StatCard({ label, value, color }) {
   return (
-    <div style={{ background: '#141414', borderRadius: 10, padding: '16px 18px', borderTop: `3px solid ${color}`, border: '1px solid rgba(255,255,255,0.07)', borderTopWidth: 3 }}>
-      <p style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 8 }}>{label}</p>
+    <div style={{ background: 'var(--bg-card, #141414)', borderRadius: 10, padding: '16px 18px', borderTop: `3px solid ${color}`, border: '1px solid var(--border-subtle, rgba(255,255,255,0.07))', borderTopWidth: 3 }}>
+      <p style={{ fontSize: 10, color: 'var(--text-dim, #6b7280)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 8 }}>{label}</p>
       <p style={{ fontSize: 20, fontWeight: 800, color }}>{value}</p>
     </div>
   );
@@ -1224,34 +1228,34 @@ function FormField({ label, children }) {
 }
 
 function Loader() {
-  return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontSize: 15, color: '#16a34a', background: '#0a0a0a', fontWeight: 500, letterSpacing: '0.3px' }}>Loading...</div>;
+  return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontSize: 15, color: '#16a34a', background: 'var(--bg-app, #0a0a0a)', fontWeight: 500, letterSpacing: '0.3px' }}>Loading...</div>;
 }
 
 const TAB_TITLES = { dashboard: 'Admin Dashboard', projects: 'Project Approvals', users: 'User Management', placement: 'AI Placement Engine', allocate: 'Manual Allocation', history: 'Allocation History', alerts: 'Notifications', metrics: 'System Performance Metrics', 'ml-metrics': 'ML Engine Diagnostics', profile: 'My Profile' };
 
 const s = {
-  layout:     { display: 'flex', minHeight: '100vh', background: '#0a0a0a' },
-  sidebar:    { width: 236, background: '#080808', display: 'flex', flexDirection: 'column', padding: '24px 0', borderRight: '1px solid rgba(255,255,255,0.06)' },
-  sideHeader: { padding: '0 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)' },
+  layout:     { display: 'flex', minHeight: '100vh', background: 'var(--bg-app, #0a0a0a)' },
+  sidebar:    { width: 236, background: 'var(--bg-sidebar, #080808)', display: 'flex', flexDirection: 'column', padding: '24px 0', borderRight: '1px solid var(--border-sidebar, rgba(255,255,255,0.06))' },
+  sideHeader: { padding: '0 20px 20px', borderBottom: '1px solid var(--border-subtle, rgba(255,255,255,0.07))' },
   logoImg:    { height: 38, width: 'auto', display: 'block', objectFit: 'contain' },
-  sideRole:   { color: '#4b5563', fontSize: 10, letterSpacing: '1.5px', textTransform: 'uppercase', fontWeight: 600 },
-  navBtn:     { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 20px', background: 'none', border: 'none', borderLeft: '3px solid transparent', color: '#6b7280', textAlign: 'left', fontSize: 13, cursor: 'pointer', fontWeight: 500 },
+  sideRole:   { color: 'var(--text-dim, #6b7280)', fontSize: 10, letterSpacing: '1.5px', textTransform: 'uppercase', fontWeight: 600 },
+  navBtn:     { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 20px', background: 'none', border: 'none', borderLeft: '3px solid transparent', color: 'var(--text-dim, #6b7280)', textAlign: 'left', fontSize: 13, cursor: 'pointer', fontWeight: 500 },
   navActive:  { background: 'rgba(22,163,74,0.08)', color: '#22c55e', borderLeftColor: '#16a34a', fontWeight: 600 },
   logoutBtn:  { width: '100%', padding: '10px 12px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: 7, color: '#f87171', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 },
   main:       { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
-  topbar:     { background: '#0f0f0f', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.07)' },
-  topTitle:   { fontSize: 17, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.3px' },
+  topbar:     { background: 'var(--bg-topbar, #0f0f0f)', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle, rgba(255,255,255,0.07))' },
+  topTitle:   { fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #ffffff)', letterSpacing: '-0.3px' },
   avatar:     { width: 32, height: 32, background: '#14532d', borderRadius: '50%', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 },
-  content:    { flex: 1, padding: 24, overflowY: 'auto', background: '#0a0a0a' },
+  content:    { flex: 1, padding: 24, overflowY: 'auto', background: 'var(--bg-app, #0a0a0a)' },
   statsRow:   { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 },
-  card:       { background: '#141414', borderRadius: 12, padding: '20px 22px', border: '1px solid rgba(255,255,255,0.07)' },
-  cardTitle:  { fontSize: 15, fontWeight: 700, color: '#ffffff', marginBottom: 14, letterSpacing: '-0.2px' },
+  card:       { background: 'var(--bg-card, #141414)', borderRadius: 12, padding: '20px 22px', border: '1px solid var(--border-subtle, rgba(255,255,255,0.07))' },
+  cardTitle:  { fontSize: 15, fontWeight: 700, color: 'var(--text-primary, #ffffff)', marginBottom: 14, letterSpacing: '-0.2px' },
   table:      { width: '100%', borderCollapse: 'collapse' },
-  th:         { textAlign: 'left', fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', padding: '8px 10px', letterSpacing: '0.5px', background: '#0f0f0f' },
-  td:         { padding: '10px', fontSize: 13, color: '#e5e7eb' },
-  label:      { display: 'block', fontSize: 11, fontWeight: 600, color: '#6b7280', marginBottom: 5, letterSpacing: '0.3px', textTransform: 'uppercase' },
-  input:      { width: '100%', padding: '9px 11px', background: '#0f0f0f', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, fontSize: 13, outline: 'none', color: '#fff', boxSizing: 'border-box' },
+  th:         { textAlign: 'left', fontSize: 10, fontWeight: 700, color: 'var(--table-th-color, #6b7280)', textTransform: 'uppercase', padding: '8px 10px', letterSpacing: '0.5px', background: 'var(--table-th-bg, #0f0f0f)' },
+  td:         { padding: '10px', fontSize: 13, color: 'var(--text-secondary, #e5e7eb)' },
+  label:      { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-dim, #6b7280)', marginBottom: 5, letterSpacing: '0.3px', textTransform: 'uppercase' },
+  input:      { width: '100%', padding: '9px 11px', background: 'var(--bg-input, #0f0f0f)', border: '1px solid var(--border-input, rgba(255,255,255,0.1))', borderRadius: 7, fontSize: 13, outline: 'none', color: 'var(--text-primary, #fff)', boxSizing: 'border-box' },
   btn:        { padding: '11px 20px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' },
   smBtn:      { padding: '5px 12px', background: 'rgba(22,163,74,0.1)', color: '#22c55e', border: '1px solid rgba(22,163,74,0.2)', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' },
-  empty:      { color: '#4b5563', fontSize: 13, textAlign: 'center', padding: '32px 0' },
+  empty:      { color: 'var(--text-dim, #6b7280)', fontSize: 13, textAlign: 'center', padding: '32px 0' },
 };

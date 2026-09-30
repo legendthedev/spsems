@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import { Lock, User, LogIn, GraduationCap, Users, ShieldCheck } from 'lucide-react';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function LandingPage() {
   const { login }       = useAuth();
@@ -26,6 +27,9 @@ export default function LandingPage() {
 
   return (
     <div style={s.page}>
+      <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 100 }}>
+        <ThemeToggle showLabel={true} />
+      </div>
       <div style={s.card}>
         <div style={s.header}>
           <img src="/kwasu.png" alt="Kwara State University" style={s.logoImg} />
@@ -118,29 +122,30 @@ function DemoItem({ role, user, pass }) {
 const s = {
   page: {
     minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    background: 'linear-gradient(135deg, #050505 0%, #0d2010 40%, #16a34a 70%, #050505 100%)',
+    background: 'var(--auth-bg, linear-gradient(135deg, #050505 0%, #0d2010 40%, #16a34a 70%, #050505 100%))',
     padding: 20,
+    position: 'relative',
   },
   card: {
-    background: 'rgba(15,15,15,0.97)', borderRadius: 16, padding: '40px 36px',
+    background: 'var(--auth-card-bg, rgba(15,15,15,0.97))', borderRadius: 16, padding: '40px 36px',
     width: '100%', maxWidth: 440,
-    boxShadow: '0 0 0 1px rgba(22,163,74,0.2), 0 24px 64px rgba(0,0,0,0.6)',
+    boxShadow: 'var(--auth-card-shadow, 0 0 0 1px rgba(22,163,74,0.2), 0 24px 64px rgba(0,0,0,0.6))',
     backdropFilter: 'blur(12px)',
   },
   header:  { textAlign: 'center', marginBottom: 28 },
   logoImg: { height: 52, display: 'block', margin: '0 auto 14px' },
-  title:    { fontSize: 26, fontWeight: 800, color: '#ffffff', marginBottom: 6, letterSpacing: '-0.5px' },
-  subtitle: { fontSize: 12, color: '#6b7280', lineHeight: 1.6 },
+  title:    { fontSize: 26, fontWeight: 800, color: 'var(--text-primary, #ffffff)', marginBottom: 6, letterSpacing: '-0.5px' },
+  subtitle: { fontSize: 12, color: 'var(--text-dim, #6b7280)', lineHeight: 1.6 },
   divider:  { width: 40, height: 2, background: '#16a34a', margin: '16px auto 0', borderRadius: 2 },
   form:     { display: 'flex', flexDirection: 'column', gap: 14 },
   fieldWrap: { display: 'flex', flexDirection: 'column', gap: 6 },
-  label:    { fontSize: 12, fontWeight: 600, color: '#9ca3af', letterSpacing: '0.3px' },
+  label:    { fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #9ca3af)', letterSpacing: '0.3px' },
   inputWrap: { position: 'relative', display: 'flex', alignItems: 'center' },
-  inputIcon: { position: 'absolute', left: 12, color: '#4b5563', pointerEvents: 'none' },
+  inputIcon: { position: 'absolute', left: 12, color: 'var(--text-dim, #4b5563)', pointerEvents: 'none' },
   input: {
     width: '100%', padding: '11px 14px 11px 36px',
-    background: '#0f0f0f', border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: 8, fontSize: 13, outline: 'none', color: '#ffffff',
+    background: 'var(--bg-input, #0f0f0f)', border: '1px solid var(--border-input, rgba(255,255,255,0.1))',
+    borderRadius: 8, fontSize: 13, outline: 'none', color: 'var(--text-primary, #ffffff)',
     transition: 'border-color 0.2s',
   },
   btn: {
@@ -150,7 +155,7 @@ const s = {
     letterSpacing: '0.2px',
   },
   registerSection: { marginTop: 22 },
-  registerLabel:   { textAlign: 'center', fontSize: 11, color: '#6b7280', marginBottom: 10, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' },
+  registerLabel:   { textAlign: 'center', fontSize: 11, color: 'var(--text-dim, #6b7280)', marginBottom: 10, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' },
   registerRow:     { display: 'flex', gap: 8, justifyContent: 'center' },
   regBtn: {
     padding: '7px 14px', background: 'rgba(22,163,74,0.12)', color: '#22c55e',
@@ -158,10 +163,10 @@ const s = {
     fontSize: 12, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5,
   },
   demoBox: {
-    marginTop: 20, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+    marginTop: 20, background: 'var(--bg-card-subtle, rgba(255,255,255,0.03))', border: '1px solid var(--border-subtle, rgba(255,255,255,0.07))',
     borderRadius: 10, padding: '14px 16px',
   },
-  demoTitle: { fontWeight: 700, fontSize: 10, color: '#6b7280', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.8px' },
+  demoTitle: { fontWeight: 700, fontSize: 10, color: 'var(--text-dim, #6b7280)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.8px' },
   demoGrid:  { fontSize: 12 },
-  code: { background: 'rgba(22,163,74,0.1)', color: '#4ade80', padding: '1px 6px', borderRadius: 4, fontSize: 11, fontFamily: 'monospace' },
+  code: { background: 'rgba(22,163,74,0.1)', color: 'var(--color-brand-light, #4ade80)', padding: '1px 6px', borderRadius: 4, fontSize: 11, fontFamily: 'monospace' },
 };

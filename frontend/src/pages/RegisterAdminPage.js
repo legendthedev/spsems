@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function RegisterAdminPage() {
   const navigate = useNavigate();
@@ -42,6 +43,9 @@ export default function RegisterAdminPage() {
 
   return (
     <div style={s.page}>
+      <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 100 }}>
+        <ThemeToggle showLabel={true} />
+      </div>
       <div style={s.card}>
         <div style={s.header}>
           <img src="/kwasu.png" alt="KWASU" style={s.logoImg} />
@@ -127,26 +131,27 @@ function Field({ label, type = 'text', value, onChange, placeholder, required })
 const s = {
   page: {
     minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    background: 'linear-gradient(135deg, #050505 0%, #0a1a0a 40%, #14532d 70%, #050505 100%)',
+    background: 'var(--auth-bg, linear-gradient(135deg, #050505 0%, #0a1a0a 40%, #14532d 70%, #050505 100%))',
     padding: '24px 16px',
+    position: 'relative',
   },
   card: {
-    background: 'rgba(15,15,15,0.97)', borderRadius: 16, padding: '36px 32px',
+    background: 'var(--auth-card-bg, rgba(15,15,15,0.97))', borderRadius: 16, padding: '36px 32px',
     width: '100%', maxWidth: 560,
-    boxShadow: '0 0 0 1px rgba(22,163,74,0.15), 0 24px 64px rgba(0,0,0,0.6)',
+    boxShadow: 'var(--auth-card-shadow, 0 0 0 1px rgba(22,163,74,0.15), 0 24px 64px rgba(0,0,0,0.6))',
   },
   header:   { textAlign: 'center', marginBottom: 24 },
   logoImg:  { height: 46, display: 'block', margin: '0 auto 14px' },
   titleRow: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 6 },
-  title:    { fontSize: 22, fontWeight: 800, color: '#ffffff', letterSpacing: '-0.3px' },
-  subtitle: { fontSize: 12, color: '#6b7280' },
+  title:    { fontSize: 22, fontWeight: 800, color: 'var(--text-primary, #ffffff)', letterSpacing: '-0.3px' },
+  subtitle: { fontSize: 12, color: 'var(--text-dim, #6b7280)' },
   divider:  { width: 32, height: 2, background: '#16a34a', margin: '14px auto 0', borderRadius: 2 },
   form:     { display: 'flex', flexDirection: 'column', gap: 14 },
-  label:    { display: 'block', fontSize: 11, fontWeight: 600, color: '#9ca3af', marginBottom: 5, letterSpacing: '0.3px', textTransform: 'uppercase' },
+  label:    { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted, #9ca3af)', marginBottom: 5, letterSpacing: '0.3px', textTransform: 'uppercase' },
   input: {
     width: '100%', padding: '10px 12px',
-    background: '#0f0f0f', border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: 7, fontSize: 13, outline: 'none', color: '#fff', boxSizing: 'border-box',
+    background: 'var(--bg-input, #0f0f0f)', border: '1px solid var(--border-input, rgba(255,255,255,0.1))',
+    borderRadius: 7, fontSize: 13, outline: 'none', color: 'var(--text-primary, #fff)', boxSizing: 'border-box',
   },
   btn: {
     marginTop: 4, padding: '12px 0', background: '#14532d', color: '#fff',
@@ -156,6 +161,6 @@ const s = {
     background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.2)',
     borderRadius: 8, padding: '10px 14px', fontSize: 12, color: '#4ade80',
   },
-  footer: { textAlign: 'center', marginTop: 18, fontSize: 12, color: '#6b7280' },
+  footer: { textAlign: 'center', marginTop: 18, fontSize: 12, color: 'var(--text-dim, #6b7280)' },
   link:   { color: '#22c55e', fontWeight: 600, textDecoration: 'none' },
 };
