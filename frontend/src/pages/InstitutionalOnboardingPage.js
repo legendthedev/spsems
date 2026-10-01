@@ -1193,6 +1193,24 @@ export default function InstitutionalOnboardingPage() {
                   </div>
                 </div>
                 <div style={s.summaryRow}>
+                  <span style={s.summaryLabel}>Dedicated School Login URL</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <code style={s.codeSnippet}>/login/{onboardResult.subdomain_slug}</code>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const fullUrl = `${window.location.origin}/login/${onboardResult.subdomain_slug}`;
+                        navigator.clipboard.writeText(fullUrl);
+                        toast.success('Dedicated school login URL copied to clipboard!');
+                      }}
+                      style={s.copyBtn}
+                    >
+                      <Copy size={12} />
+                      <span>Copy URL</span>
+                    </button>
+                  </div>
+                </div>
+                <div style={s.summaryRow}>
                   <span style={s.summaryLabel}>Live Status</span>
                   <span style={{ ...s.livePill, background: '#16a34a' }}>
                     100% Onboarded &amp; Operational
@@ -1203,10 +1221,10 @@ export default function InstitutionalOnboardingPage() {
               <div style={s.successActionRow}>
                 <button
                   type="button"
-                  onClick={() => navigate('/login')}
+                  onClick={() => navigate(`/login/${onboardResult.subdomain_slug}`)}
                   style={{ ...s.btnPrimary, background: form.primary_color }}
                 >
-                  <span>Proceed to Sign In with New Admin Account</span>
+                  <span>Launch {onboardResult.institution_code} SPSEMS Login</span>
                   <ArrowRight size={16} />
                 </button>
                 <Link to="/" style={s.btnSecondary}>

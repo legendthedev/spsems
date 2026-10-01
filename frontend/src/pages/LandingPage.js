@@ -1,15 +1,83 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
-import { Lock, User, LogIn, GraduationCap, Users, ShieldCheck, ArrowLeft } from 'lucide-react';
+import {
+  Lock, User, LogIn, GraduationCap, Users, ShieldCheck, ArrowLeft,
+  ChevronDown, School
+} from 'lucide-react';
+import api from '../services/api';
 import ThemeToggle from '../components/ThemeToggle';
 
 export default function LandingPage() {
-  const { login }       = useAuth();
-  const navigate        = useNavigate();
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const { slug: routeSlug } = useParams();
+  const location = useLocation();
+
+  const querySlug = new URLSearchParams(location.search).get('institution') ||
+                    new URLSearchParams(location.search).get('school');
+  const targetSlug = (routeSlug || querySlug || 'kwasu').toLowerCase();
+
+  // Institution Branding State
+  const [institution, setInstitution] = useState({
+    name: 'Kwara State University',
+    code: 'KWASU',
+    slug: 'kwasu',
+    logo_url: '/kwasu.png',
+    primary_color: '#16a34a',
+    secondary_color: '#080808',
+    domain: 'kwasu.edu.ng',
+    session: '2025/2026',
+    semester: 'First Semester',
+    status: 'active',
+  });
+
+  const [allInstitutions, setAllInstitutions] = useState([]);
+  const [showSchoolPicker, setShowSchoolPicker] = useState(false);
   const [form, setForm] = useState({ username: '', password: '' });
   const [busy, setBusy] = useState(false);
+
+  // Fetch institution data whenever slug changes
+  useEffect(() => {
+    async function loadInstitution() {
+      try {
+        const res = await api.get(`/institutions/by-slug/${targetSlug}`);
+        if (res.data) {
+          setInstitution({
+            name: res.data.name,
+            code: res.data.code,
+            slug: res.data.slug,
+            logo_url: res.data.logo_url || '/kwasu.png',
+            primary_color: res.data.primary_color || '#16a34a',
+            secondary_color: res.data.secondary_color || '#080808',
+            domain: res.data.domain,
+            session: res.data.session || '2025/2026',
+            semester: res.data.semester || 'First Semester',
+            status: res.data.status,
+          });
+        }
+      } catch (err) {
+        console.warn(`Could not load institution for slug '${targetSlug}', default to KWASU.`);
+      }
+    }
+    loadInstitution();
+  }, [targetSlug]);
+
+  // Fetch all schools for the dropdown switcher
+  useEffect(() => {
+    async function fetchDirectory() {
+      try {
+        const res = await api.get('/institutions/directory');
+        if (res.data?.institutions) {
+          setAllInstitutions(res.data.institutions);
+        }
+      } catch (e) {
+        console.warn('Directory fetch failed:', e);
+      }
+    }
+    fetchDirectory();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,48 +87,138 @@ export default function LandingPage() {
       toast.success(`Welcome back, ${user.full_name}`);
       navigate(`/${user.role}`);
     } catch (err) {
-      toast.error(err.response?.data?.detail || err.response?.data?.message || 'Login failed. Check your credentials.');
+      toast.error(
+        err.response?.data?.detail ||
+        err.response?.data?.message ||
+        'Login failed. Please check your credentials.'
+      );
     } finally {
       setBusy(false);
     }
   };
 
+  const primaryColor = institution.primary_color || '#16a34a';
+  const isKwasu = institution.slug === 'kwasu' || institution.code === 'KWASU';
+
   return (
-    <div style={s.page}>
+    <div
+      style={{
+        ...s.page,
+        background: `radial-gradient(ellipse at 50% 15%, ${primaryColor}26 0%, #050505 85%)`,
+      }}
+    >
       <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 100 }}>
         <ThemeToggle showLabel={true} />
       </div>
-      <div style={s.card}>
+
+      <div
+        style={{
+          ...s.card,
+          boxShadow: `0 0 0 1px ${primaryColor}33, 0 24px 64px rgba(0,0,0,0.7)`,
+        }}
+      >
+        {/* Top Navigation Row */}
         <div style={s.navTopRow}>
           <Link to="/" style={s.backLink}>
             <ArrowLeft size={13} />
             <span>All Institutions</span>
           </Link>
-          <span style={s.nodeIndicator}>KWASU Node</span>
-        </div>
 
-        <div style={s.header}>
-          <img src="/kwasu.png" alt="Kwara State University" style={s.logoImg} />
-          <div style={s.nodeBadge}>
-            <span style={s.nodeDot} />
-            <span>Kwara State University (Live Node)</span>
+          {/* Institution Switcher Button */}
+          <div style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => setShowSchoolPicker(!showSchoolPicker)}
+              style={{
+                ...s.nodeIndicator,
+                color: primaryColor,
+                borderColor: `${primaryColor}55`,
+                background: `${primaryColor}18`,
+              }}
+            >
+              <span>{institution.code} Portal</span>
+              <ChevronDown size={12} />
+            </button>
+
+            {showSchoolPicker && (
+              <div style={s.dropdownMenu}>
+                <div style={s.dropdownTitle}>SWITCH INSTITUTION</div>
+                {allInstitutions.map((sch) => (
+                  <Link
+                    key={sch.id}
+                    to={`/login/${sch.slug}`}
+                    onClick={() => setShowSchoolPicker(false)}
+                    style={{
+                      ...s.dropdownItem,
+                      color: sch.slug === institution.slug ? primaryColor : 'var(--text-primary, #fff)',
+                      fontWeight: sch.slug === institution.slug ? 700 : 500,
+                    }}
+                  >
+                    <img
+                      src={sch.logo || '/kwasu.png'}
+                      alt=""
+                      style={s.dropdownLogo}
+                      onError={(e) => { e.target.src = '/kwasu.png'; }}
+                    />
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span>{sch.name}</span>
+                      <span style={{ fontSize: 10, color: 'var(--text-muted, #9ca3af)' }}>{sch.code}</span>
+                    </div>
+                  </Link>
+                ))}
+                <Link
+                  to="/onboard"
+                  onClick={() => setShowSchoolPicker(false)}
+                  style={s.dropdownOnboardLink}
+                >
+                  <School size={12} />
+                  <span>+ Onboard New University</span>
+                </Link>
+              </div>
+            )}
           </div>
-          <h1 style={s.title}>SPSEMS</h1>
-          <p style={s.subtitle}>Smart Project Supervision &amp; Evaluation Management System</p>
-          <div style={s.divider} />
         </div>
 
+        {/* Institution Brand Header */}
+        <div style={s.header}>
+          <img
+            src={institution.logo_url}
+            alt={institution.name}
+            style={s.logoImg}
+            onError={(e) => { e.target.src = '/kwasu.png'; }}
+          />
+
+          <div
+            style={{
+              ...s.nodeBadge,
+              background: `${primaryColor}1a`,
+              borderColor: `${primaryColor}40`,
+              color: primaryColor,
+            }}
+          >
+            <span style={{ ...s.nodeDot, background: primaryColor, boxShadow: `0 0 6px ${primaryColor}` }} />
+            <span>{institution.name} (Active Node)</span>
+          </div>
+
+          <h1 style={s.title}>{institution.code} SPSEMS</h1>
+          <p style={s.subtitle}>
+            Smart Project Supervision &amp; Evaluation Management System
+          </p>
+          <div style={{ ...s.divider, background: primaryColor }} />
+        </div>
+
+        {/* Login Form */}
         <form onSubmit={handleSubmit} style={s.form}>
           <div style={s.fieldWrap}>
-            <label style={s.label}>Username</label>
+            <label style={s.label}>Username or Matric Number</label>
             <div style={s.inputWrap}>
               <User size={15} style={s.inputIcon} />
               <input
                 style={s.input}
                 type="text"
-                placeholder="Enter your username"
+                placeholder={isKwasu ? "e.g. student1, supervisor1, or admin" : "Enter your username / matric"}
                 value={form.username}
-                onChange={e => setForm({ ...form, username: e.target.value })}
+                onChange={(e) => setForm({ ...form, username: e.target.value })}
                 required
                 autoComplete="username"
               />
@@ -76,135 +234,362 @@ export default function LandingPage() {
                 type="password"
                 placeholder="Enter your password"
                 value={form.password}
-                onChange={e => setForm({ ...form, password: e.target.value })}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
                 required
                 autoComplete="current-password"
               />
             </div>
           </div>
 
-          <button type="submit" style={busy ? { ...s.btn, opacity: 0.6 } : s.btn} disabled={busy}>
+          <button
+            type="submit"
+            style={{
+              ...s.btn,
+              background: primaryColor,
+              opacity: busy ? 0.6 : 1,
+            }}
+            disabled={busy}
+          >
             <LogIn size={16} />
-            {busy ? 'Signing in...' : 'Sign In'}
+            <span>{busy ? 'Signing in...' : `Sign In to ${institution.code} Portal`}</span>
           </button>
         </form>
 
+        {/* Registration Section for this specific Institution */}
         <div style={s.registerSection}>
-          <p style={s.registerLabel}>New to SPSEMS? Register as:</p>
+          <p style={s.registerLabel}>New to {institution.code}? Register as:</p>
           <div style={s.registerRow}>
-            <Link to="/register" style={s.regBtn}>
+            <Link
+              to={`/register?institution=${institution.slug}`}
+              style={{
+                ...s.regBtn,
+                color: primaryColor,
+                background: `${primaryColor}14`,
+                borderColor: `${primaryColor}30`,
+              }}
+            >
               <GraduationCap size={13} />
-              Student
+              <span>Student</span>
             </Link>
-            <Link to="/register/lecturer" style={s.regBtn}>
+            <Link
+              to={`/register/lecturer?institution=${institution.slug}`}
+              style={{
+                ...s.regBtn,
+                color: primaryColor,
+                background: `${primaryColor}14`,
+                borderColor: `${primaryColor}30`,
+              }}
+            >
               <Users size={13} />
-              Lecturer
+              <span>Lecturer</span>
             </Link>
-            <Link to="/register/admin" style={{ ...s.regBtn, background: 'rgba(20,83,45,0.5)', borderColor: '#14532d' }}>
+            <Link
+              to={`/register/admin?institution=${institution.slug}`}
+              style={{
+                ...s.regBtn,
+                color: primaryColor,
+                background: `${primaryColor}22`,
+                borderColor: `${primaryColor}40`,
+              }}
+            >
               <ShieldCheck size={13} />
-              Admin
+              <span>Admin</span>
             </Link>
           </div>
         </div>
 
-        <div style={s.demoBox}>
-          <p style={s.demoTitle}>Demo Credentials</p>
-          <div style={s.demoGrid}>
-            <DemoItem role="Admin / HOD"   user="admin"       pass="password123" />
-            <DemoItem role="Supervisor"    user="supervisor1" pass="password123" />
-            <DemoItem role="Student"       user="student1"    pass="password123" />
+        {/* Demo Credentials Box */}
+        {isKwasu ? (
+          <div style={s.demoBox}>
+            <p style={s.demoTitle}>KWASU DEMO CREDENTIALS</p>
+            <div style={s.demoGrid}>
+              <DemoItem role="Admin / HOD" user="admin" pass="password123" color={primaryColor} />
+              <DemoItem role="Supervisor" user="supervisor1" pass="password123" color={primaryColor} />
+              <DemoItem role="Student" user="student1" pass="password123" color={primaryColor} />
+            </div>
           </div>
-        </div>
+        ) : (
+          <div style={s.customSchoolHint}>
+            <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted, #9ca3af)', lineHeight: 1.5 }}>
+              💡 <b>Institutional Portal</b>: Sign in using your {institution.name} administrative account,
+              or use student/lecturer self-registration above with your <code style={s.code}>@{institution.domain}</code> email.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function DemoItem({ role, user, pass }) {
+function DemoItem({ role, user, pass, color }) {
   return (
-    <div style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+    <div style={{ marginBottom: 5, display: 'flex', alignItems: 'center', gap: 6 }}>
       <span style={{ fontWeight: 600, color: '#9ca3af', fontSize: 11, width: 80 }}>{role}</span>
-      <code style={s.code}>{user}</code>
+      <code style={{ ...s.code, color: color || '#4ade80' }}>{user}</code>
       <span style={{ color: '#4b5563', fontSize: 11 }}>/</span>
-      <code style={s.code}>{pass}</code>
+      <code style={{ ...s.code, color: color || '#4ade80' }}>{pass}</code>
     </div>
   );
 }
 
+// ── STYLES ───────────────────────────────────────────────────────────────────
 const s = {
   page: {
-    minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    background: 'var(--auth-bg, linear-gradient(135deg, #050505 0%, #0d2010 40%, #16a34a 70%, #050505 100%))',
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: 20,
     position: 'relative',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   },
   card: {
-    background: 'var(--auth-card-bg, rgba(15,15,15,0.97))', borderRadius: 16, padding: '32px 36px 36px',
-    width: '100%', maxWidth: 440,
-    boxShadow: 'var(--auth-card-shadow, 0 0 0 1px rgba(22,163,74,0.2), 0 24px 64px rgba(0,0,0,0.6))',
+    background: 'var(--auth-card-bg, rgba(15,15,15,0.97))',
+    borderRadius: 16,
+    padding: '32px 36px 36px',
+    width: '100%',
+    maxWidth: 450,
     backdropFilter: 'blur(12px)',
+    transition: 'box-shadow 0.25s ease',
   },
   navTopRow: {
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    marginBottom: 20, paddingBottom: 12,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+    paddingBottom: 12,
     borderBottom: '1px solid var(--border-subtle, rgba(255,255,255,0.06))',
   },
   backLink: {
-    display: 'inline-flex', alignItems: 'center', gap: 6,
-    color: 'var(--text-muted, #9ca3af)', textDecoration: 'none',
-    fontSize: 12, fontWeight: 500,
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    color: 'var(--text-muted, #9ca3af)',
+    textDecoration: 'none',
+    fontSize: 12,
+    fontWeight: 500,
     transition: 'color 0.15s ease',
   },
   nodeIndicator: {
-    fontSize: 11, fontWeight: 600, color: '#22c55e',
-    background: 'rgba(22,163,74,0.12)', border: '1px solid rgba(22,163,74,0.25)',
-    padding: '2px 8px', borderRadius: 6,
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    fontSize: 11,
+    fontWeight: 700,
+    padding: '4px 10px',
+    borderRadius: 6,
+    border: '1px solid',
+    cursor: 'pointer',
+    outline: 'none',
   },
-  header:  { textAlign: 'center', marginBottom: 24 },
-  logoImg: { height: 50, display: 'block', margin: '0 auto 10px' },
+  dropdownMenu: {
+    position: 'absolute',
+    top: 28,
+    right: 0,
+    background: 'var(--bg-card, #171717)',
+    border: '1px solid var(--border-card, rgba(255,255,255,0.12))',
+    borderRadius: 10,
+    boxShadow: '0 10px 30px rgba(0,0,0,0.8)',
+    padding: '8px 0',
+    minWidth: 240,
+    zIndex: 200,
+  },
+  dropdownTitle: {
+    fontSize: 10,
+    fontWeight: 800,
+    color: 'var(--text-dim, #6b7280)',
+    letterSpacing: '0.8px',
+    padding: '6px 14px',
+  },
+  dropdownItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    padding: '8px 14px',
+    textDecoration: 'none',
+    fontSize: 12,
+    transition: 'background 0.15s ease',
+  },
+  dropdownLogo: {
+    width: 22,
+    height: 22,
+    objectFit: 'contain',
+    borderRadius: 4,
+  },
+  dropdownOnboardLink: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '10px 14px 4px',
+    borderTop: '1px solid var(--border-subtle, rgba(255,255,255,0.06))',
+    color: '#22c55e',
+    textDecoration: 'none',
+    fontSize: 11,
+    fontWeight: 700,
+    marginTop: 4,
+  },
+  header: {
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  logoImg: {
+    height: 54,
+    width: 54,
+    objectFit: 'contain',
+    display: 'block',
+    margin: '0 auto 10px',
+    background: 'rgba(255,255,255,0.04)',
+    borderRadius: 8,
+    padding: 4,
+  },
   nodeBadge: {
-    display: 'inline-flex', alignItems: 'center', gap: 6,
-    background: 'rgba(22,163,74,0.12)', border: '1px solid rgba(22,163,74,0.25)',
-    color: '#22c55e', fontSize: 11, fontWeight: 600, padding: '3px 10px',
-    borderRadius: 999, marginBottom: 10,
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    fontSize: 11,
+    fontWeight: 600,
+    padding: '3px 10px',
+    borderRadius: 999,
+    marginBottom: 10,
+    border: '1px solid',
   },
   nodeDot: {
-    width: 6, height: 6, borderRadius: '50%', background: '#22c55e',
-    boxShadow: '0 0 6px #22c55e',
+    width: 6,
+    height: 6,
+    borderRadius: '50%',
   },
-  title:    { fontSize: 26, fontWeight: 800, color: 'var(--text-primary, #ffffff)', marginBottom: 6, letterSpacing: '-0.5px' },
-  subtitle: { fontSize: 12, color: 'var(--text-dim, #6b7280)', lineHeight: 1.6 },
-  divider:  { width: 40, height: 2, background: '#16a34a', margin: '14px auto 0', borderRadius: 2 },
-  form:     { display: 'flex', flexDirection: 'column', gap: 14 },
-  fieldWrap: { display: 'flex', flexDirection: 'column', gap: 6 },
-  label:    { fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #9ca3af)', letterSpacing: '0.3px' },
-  inputWrap: { position: 'relative', display: 'flex', alignItems: 'center' },
-  inputIcon: { position: 'absolute', left: 12, color: 'var(--text-dim, #4b5563)', pointerEvents: 'none' },
+  title: {
+    fontSize: 24,
+    fontWeight: 800,
+    color: 'var(--text-primary, #ffffff)',
+    marginBottom: 4,
+    letterSpacing: '-0.4px',
+  },
+  subtitle: {
+    fontSize: 12,
+    color: 'var(--text-dim, #6b7280)',
+    lineHeight: 1.5,
+  },
+  divider: {
+    width: 40,
+    height: 2,
+    margin: '14px auto 0',
+    borderRadius: 2,
+  },
+  form: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 14,
+  },
+  fieldWrap: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: 'var(--text-muted, #9ca3af)',
+    letterSpacing: '0.3px',
+  },
+  inputWrap: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  inputIcon: {
+    position: 'absolute',
+    left: 12,
+    color: 'var(--text-dim, #4b5563)',
+    pointerEvents: 'none',
+  },
   input: {
-    width: '100%', padding: '11px 14px 11px 36px',
-    background: 'var(--bg-input, #0f0f0f)', border: '1px solid var(--border-input, rgba(255,255,255,0.1))',
-    borderRadius: 8, fontSize: 13, outline: 'none', color: 'var(--text-primary, #ffffff)',
+    width: '100%',
+    padding: '11px 14px 11px 36px',
+    background: 'var(--bg-input, #0f0f0f)',
+    border: '1px solid var(--border-input, rgba(255,255,255,0.1))',
+    borderRadius: 8,
+    fontSize: 13,
+    outline: 'none',
+    color: 'var(--text-primary, #ffffff)',
     transition: 'border-color 0.2s',
+    boxSizing: 'border-box',
   },
   btn: {
-    marginTop: 4, padding: '12px 0', background: '#16a34a', color: '#fff',
-    border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 14,
-    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+    marginTop: 4,
+    padding: '12px 0',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 8,
+    fontWeight: 700,
+    fontSize: 14,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     letterSpacing: '0.2px',
+    boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+    transition: 'opacity 0.15s ease',
   },
-  registerSection: { marginTop: 20 },
-  registerLabel:   { textAlign: 'center', fontSize: 11, color: 'var(--text-dim, #6b7280)', marginBottom: 10, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' },
-  registerRow:     { display: 'flex', gap: 8, justifyContent: 'center' },
+  registerSection: {
+    marginTop: 20,
+  },
+  registerLabel: {
+    textAlign: 'center',
+    fontSize: 11,
+    color: 'var(--text-dim, #6b7280)',
+    marginBottom: 10,
+    fontWeight: 500,
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+  },
+  registerRow: {
+    display: 'flex',
+    gap: 8,
+    justifyContent: 'center',
+  },
   regBtn: {
-    padding: '7px 14px', background: 'rgba(22,163,74,0.12)', color: '#22c55e',
-    border: '1px solid rgba(22,163,74,0.25)', borderRadius: 7, fontWeight: 600,
-    fontSize: 12, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5,
+    padding: '7px 12px',
+    borderRadius: 7,
+    fontWeight: 600,
+    fontSize: 11,
+    textDecoration: 'none',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+    border: '1px solid',
   },
   demoBox: {
-    marginTop: 20, background: 'var(--bg-card-subtle, rgba(255,255,255,0.03))', border: '1px solid var(--border-subtle, rgba(255,255,255,0.07))',
-    borderRadius: 10, padding: '14px 16px',
+    marginTop: 20,
+    background: 'var(--bg-card-subtle, rgba(255,255,255,0.03))',
+    border: '1px solid var(--border-subtle, rgba(255,255,255,0.07))',
+    borderRadius: 10,
+    padding: '14px 16px',
   },
-  demoTitle: { fontWeight: 700, fontSize: 10, color: 'var(--text-dim, #6b7280)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.8px' },
-  demoGrid:  { fontSize: 12 },
-  code: { background: 'rgba(22,163,74,0.1)', color: 'var(--color-brand-light, #4ade80)', padding: '1px 6px', borderRadius: 4, fontSize: 11, fontFamily: 'monospace' },
+  demoTitle: {
+    fontWeight: 700,
+    fontSize: 10,
+    color: 'var(--text-dim, #6b7280)',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: '0.8px',
+  },
+  demoGrid: {
+    fontSize: 12,
+  },
+  customSchoolHint: {
+    marginTop: 18,
+    padding: '12px 14px',
+    background: 'var(--bg-card-subtle, rgba(255,255,255,0.03))',
+    border: '1px solid var(--border-subtle, rgba(255,255,255,0.07))',
+    borderRadius: 10,
+  },
+  code: {
+    background: 'rgba(255,255,255,0.06)',
+    padding: '1px 6px',
+    borderRadius: 4,
+    fontSize: 11,
+    fontFamily: 'monospace',
+  },
 };

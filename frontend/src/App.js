@@ -30,6 +30,8 @@ function AppRoutes() {
     <Routes>
       <Route path="/"                   element={user ? <Navigate to={`/${user.role}`} replace /> : <PlatformLandingPage />} />
       <Route path="/login"              element={user ? <Navigate to={`/${user.role}`} replace /> : <LandingPage />} />
+      <Route path="/login/:slug"        element={user ? <Navigate to={`/${user.role}`} replace /> : <LandingPage />} />
+      <Route path="/portal/:slug"       element={user ? <Navigate to={`/${user.role}`} replace /> : <LandingPage />} />
       <Route path="/kwasu"              element={<LandingPage />} />
       <Route path="/onboard"            element={<InstitutionalOnboardingPage />} />
       <Route path="/onboarding"         element={<InstitutionalOnboardingPage />} />

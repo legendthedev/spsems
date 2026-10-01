@@ -21,8 +21,6 @@ export default function PlatformLandingPage() {
         }
       } catch (err) {
         console.warn('Directory fetch fallback:', err);
-      } finally {
-        setLoading(false);
       }
     }
     fetchDirectory();
@@ -275,7 +273,7 @@ export default function PlatformLandingPage() {
                     </div>
 
                     <Link
-                      to={`/login?institution=${inst.slug}`}
+                      to={`/login/${inst.slug}`}
                       style={{
                         ...s.schoolCardBtn,
                         background: inst.primary_color || '#16a34a',
