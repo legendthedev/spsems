@@ -8,6 +8,7 @@ import LandingPage        from './pages/LandingPage';
 import RegisterPage       from './pages/RegisterPage';
 import RegisterLecturerPage from './pages/RegisterLecturerPage';
 import RegisterAdminPage  from './pages/RegisterAdminPage';
+import InstitutionalOnboardingPage from './pages/InstitutionalOnboardingPage';
 import StudentPortal      from './pages/StudentPortal';
 import SupervisorPortal   from './pages/SupervisorPortal';
 import AdminPortal        from './pages/AdminPortal';
@@ -28,6 +29,9 @@ function AppRoutes() {
     <Routes>
       <Route path="/"                   element={user ? <Navigate to={`/${user.role}`} replace /> : <LandingPage />} />
       <Route path="/login"              element={user ? <Navigate to={`/${user.role}`} replace /> : <LandingPage />} />
+      <Route path="/onboard"            element={<InstitutionalOnboardingPage />} />
+      <Route path="/onboarding"         element={<InstitutionalOnboardingPage />} />
+      <Route path="/institutions/onboard" element={<InstitutionalOnboardingPage />} />
       <Route path="/register"           element={<RegisterPage />} />
       <Route path="/register/lecturer"  element={<RegisterLecturerPage />} />
       <Route path="/register/admin"     element={<RegisterAdminPage />} />

@@ -731,6 +731,31 @@ def auto_init_database():
                 conn.execute(text("UPDATE supervisors SET institution_id = 1 WHERE institution_id IS NULL"))
                 conn.execute(text("UPDATE projects SET institution_id = 1 WHERE institution_id IS NULL"))
                 print("[*] Seeded primary tenant: Kwara State University (KWASU)")
+
+            # Ensure KWASU has all 7 pipeline stages marked as completed
+            pipe_count = conn.execute(text("SELECT count(*) FROM tenant_onboarding_pipeline WHERE institution_id=1")).fetchone()[0]
+            if pipe_count == 0:
+                kwasu_stages = [
+                    (1, '1_registration', 'School Profile & Contact Verification', 'completed', 'Kwara State University registered and validated', 'Institutional Admin', '2026-09-01 08:00:00', '2026-09-01 08:30:00'),
+                    (2, '2_domain_verification', 'Educational Domain Ownership Check', 'completed', 'Domain kwasu.edu.ng verified via DNS TXT record', 'System', '2026-09-01 08:30:00', '2026-09-01 09:00:00'),
+                    (3, '3_tenant_provisioning', 'Tenant Database Isolation & Cloud Storage', 'completed', 'Isolated database schema & storage provisioned', 'Pipeline Daemon', '2026-09-01 09:00:00', '2026-09-01 09:15:00'),
+                    (4, '4_department_setup', 'Faculties & Academic Departments Tree', 'completed', 'Computer Science and allied departments mapped', 'Institutional Admin', '2026-09-01 09:15:00', '2026-09-01 10:00:00'),
+                    (5, '5_faculty_import', 'Supervisors & Lecturers Batch Ingestion', 'completed', 'Faculty roster uploaded and supervisor accounts active', 'Institutional Admin', '2026-09-01 10:00:00', '2026-09-01 11:00:00'),
+                    (6, '6_policy_config', 'Degree Rules & Supervision Governance', 'completed', 'Postgraduate dual-supervision rules & load limits set', 'Institutional Admin', '2026-09-01 11:00:00', '2026-09-01 11:30:00'),
+                    (7, '7_live_activation', 'Production Go-Live & Portal Access', 'completed', 'Full production launch: student & faculty self-service live', 'System & Admin', '2026-09-01 12:00:00', '2026-09-01 12:00:00'),
+                ]
+                for s_order, s_code, s_name, s_status, s_action, s_by, s_start, s_end in kwasu_stages:
+                    conn.execute(text("""
+                        INSERT INTO tenant_onboarding_pipeline (
+                            institution_id, stage_order, stage_code, stage_name, status,
+                            required_action, executed_by, started_at, completed_at
+                        ) VALUES (1, :s_order, :s_code, :s_name, :s_status, :s_action, :s_by, :s_start, :s_end)
+                    """), {
+                        "s_order": s_order, "s_code": s_code, "s_name": s_name,
+                        "s_status": s_status, "s_action": s_action, "s_by": s_by,
+                        "s_start": s_start, "s_end": s_end
+                    })
+                print("[*] Seeded KWASU pipeline milestone records (100% completed)")
         except Exception as e:
             print(f"[*] Note on institutions seed: {e}")
 
