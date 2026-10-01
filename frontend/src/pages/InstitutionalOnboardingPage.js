@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import {
   Building2, Palette, ShieldCheck, CheckCircle2, ArrowRight, ArrowLeft,
   Upload, Sparkles, School, Globe, Mail, Phone, Lock, User, Check,
-  Copy, Layers, Sliders
+  Copy, Layers, Sliders, GraduationCap
 } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -387,7 +387,9 @@ export default function InstitutionalOnboardingPage() {
         <div style={s.navInner}>
           <div style={s.brandGroup}>
             <Link to="/" style={s.brandLink}>
-              <img src="/kwasu.png" alt="SPSEMS" style={s.navLogo} />
+              <div style={s.navLogoBadge}>
+                <GraduationCap size={20} color="#ffffff" strokeWidth={2.4} />
+              </div>
               <div style={s.navBrandText}>
                 <span style={s.navTitle}>SPSEMS Multi-School Engine</span>
                 <span style={s.navSub}>Institutional Tenant Onboarding</span>
@@ -1274,10 +1276,16 @@ const s = {
     gap: 12,
     textDecoration: 'none',
   },
-  navLogo: {
+  navLogoBadge: {
     width: 36,
     height: 36,
-    objectFit: 'contain',
+    borderRadius: 10,
+    background: 'linear-gradient(135deg, #16a34a 0%, #059669 50%, #0284c7 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 4px 12px rgba(22, 163, 74, 0.35)',
+    flexShrink: 0,
   },
   navBrandText: {
     display: 'flex',

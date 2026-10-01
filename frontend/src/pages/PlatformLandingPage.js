@@ -40,7 +40,9 @@ export default function PlatformLandingPage() {
       <header style={s.header}>
         <div style={s.navInner}>
           <div style={s.logoGroup}>
-            <img src="/kwasu.png" alt="SPSEMS" style={s.navLogo} />
+            <div style={s.navLogoBadge}>
+              <GraduationCap size={20} color="#ffffff" strokeWidth={2.4} />
+            </div>
             <div>
               <div style={s.navBrand}>SPSEMS</div>
               <div style={s.navTagline}>National Higher Education Platform</div>
@@ -140,7 +142,9 @@ export default function PlatformLandingPage() {
           <div style={s.featuredKwasuCard}>
             <div style={s.featuredHeader}>
               <div style={s.featuredLogoWrap}>
-                <img src="/kwasu.png" alt="KWASU Emblem" style={s.featuredLogo} />
+                <div style={s.featuredCrestBadge}>
+                  <School size={28} color="#22c55e" />
+                </div>
                 <div>
                   <div style={s.featuredBadgeRow}>
                     <span style={s.livePulse} />
@@ -242,12 +246,25 @@ export default function PlatformLandingPage() {
                   }}
                 >
                   <div style={s.schoolCardTop}>
-                    <img
-                      src={inst.logo || '/kwasu.png'}
-                      alt={inst.name}
-                      style={s.schoolCardLogo}
-                      onError={(e) => { e.target.src = '/kwasu.png'; }}
-                    />
+                    {inst.logo && inst.logo !== '/kwasu.png' ? (
+                      <img
+                        src={inst.logo}
+                        alt={inst.name}
+                        style={s.schoolCardLogo}
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          ...s.schoolCardFallback,
+                          background: `${inst.primary_color || '#16a34a'}22`,
+                          color: inst.primary_color || '#16a34a',
+                          border: `1.5px solid ${inst.primary_color || '#16a34a'}44`,
+                        }}
+                      >
+                        {inst.code || (inst.name ? inst.name.slice(0, 2).toUpperCase() : 'UN')}
+                      </div>
+                    )}
                     <div style={s.schoolCardInfo}>
                       <div style={s.schoolCardName}>{inst.name}</div>
                       <div style={s.schoolCardDomain}>{inst.domain}</div>
@@ -343,7 +360,9 @@ export default function PlatformLandingPage() {
       <footer style={s.footer}>
         <div style={s.footerInner}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <img src="/kwasu.png" alt="KWASU" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+            <div style={s.footerLogoBadge}>
+              <GraduationCap size={15} color="#ffffff" strokeWidth={2.2} />
+            </div>
             <span style={{ fontSize: 13, color: 'var(--text-muted, #9ca3af)' }}>
               SPSEMS • Smart Project Supervision &amp; Evaluation Management System
             </span>
@@ -391,10 +410,16 @@ const s = {
     alignItems: 'center',
     gap: 12,
   },
-  navLogo: {
-    width: 36,
-    height: 36,
-    objectFit: 'contain',
+  navLogoBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    background: 'linear-gradient(135deg, #16a34a 0%, #059669 50%, #0284c7 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 4px 12px rgba(22, 163, 74, 0.35)',
+    flexShrink: 0,
   },
   navBrand: {
     fontWeight: 800,
@@ -639,13 +664,16 @@ const s = {
     alignItems: 'center',
     gap: 18,
   },
-  featuredLogo: {
-    width: 60,
-    height: 60,
-    objectFit: 'contain',
-    background: 'rgba(255,255,255,0.06)',
-    padding: 6,
-    borderRadius: 12,
+  featuredCrestBadge: {
+    width: 58,
+    height: 58,
+    borderRadius: 14,
+    background: 'rgba(22, 163, 74, 0.15)',
+    border: '1.5px solid rgba(22, 163, 74, 0.35)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
   featuredBadgeRow: {
     display: 'flex',
@@ -832,6 +860,18 @@ const s = {
     background: 'rgba(255,255,255,0.05)',
     padding: 4,
   },
+  schoolCardFallback: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 800,
+    fontSize: 14,
+    letterSpacing: '0.5px',
+    flexShrink: 0,
+  },
   schoolCardInfo: {
     display: 'flex',
     flexDirection: 'column',
@@ -951,5 +991,15 @@ const s = {
     justifyContent: 'space-between',
     flexWrap: 'wrap',
     gap: 12,
+  },
+  footerLogoBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 7,
+    background: 'linear-gradient(135deg, #16a34a, #0284c7)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
 };
