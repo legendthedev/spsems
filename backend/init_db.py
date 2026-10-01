@@ -17,6 +17,65 @@ def _hash_pw(password: str) -> str:
     return bcrypt.hashpw(password[:72].encode(), bcrypt.gensalt()).decode()
 
 SQLITE_TABLES = [
+    ("institutions", """
+        CREATE TABLE IF NOT EXISTS institutions (
+          institution_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+          name               TEXT NOT NULL,
+          code               TEXT NOT NULL UNIQUE,
+          slug               TEXT NOT NULL UNIQUE,
+          official_domain    TEXT NOT NULL UNIQUE,
+          institution_type   TEXT DEFAULT 'State University',
+          country            TEXT DEFAULT 'Nigeria',
+          state              TEXT,
+          city               TEXT,
+          contact_email      TEXT NOT NULL,
+          contact_phone      TEXT,
+          logo_url           TEXT DEFAULT '/kwasu.png',
+          primary_color      TEXT DEFAULT '#16a34a',
+          secondary_color    TEXT DEFAULT '#080808',
+          status             TEXT DEFAULT 'active',
+          verification_token TEXT,
+          is_verified        INTEGER DEFAULT 1,
+          current_stage      TEXT DEFAULT '7_live_activation',
+          onboarding_percent INTEGER DEFAULT 100,
+          created_at         TEXT DEFAULT (datetime('now')),
+          verified_at        TEXT,
+          activated_at       TEXT
+        )
+    """),
+    ("institution_settings", """
+        CREATE TABLE IF NOT EXISTS institution_settings (
+          setting_id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+          institution_id               INTEGER NOT NULL UNIQUE,
+          academic_session             TEXT DEFAULT '2025/2026',
+          current_semester             TEXT DEFAULT 'First Semester',
+          max_supervisor_load          INTEGER DEFAULT 10,
+          dual_supervisor_for_postgrad INTEGER DEFAULT 1,
+          auto_assign_co_supervisor    INTEGER DEFAULT 1,
+          enable_ai_pairing            INTEGER DEFAULT 1,
+          allow_public_student_reg     INTEGER DEFAULT 1,
+          allow_public_lecturer_reg    INTEGER DEFAULT 1,
+          require_admin_approval       INTEGER DEFAULT 1,
+          updated_at                   TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (institution_id) REFERENCES institutions(institution_id) ON DELETE CASCADE
+        )
+    """),
+    ("tenant_onboarding_pipeline", """
+        CREATE TABLE IF NOT EXISTS tenant_onboarding_pipeline (
+          pipeline_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+          institution_id  INTEGER NOT NULL,
+          stage_order     INTEGER NOT NULL,
+          stage_code      TEXT NOT NULL,
+          stage_name      TEXT NOT NULL,
+          status          TEXT DEFAULT 'pending',
+          required_action TEXT,
+          started_at      TEXT,
+          completed_at    TEXT,
+          executed_by     TEXT,
+          error_message   TEXT,
+          FOREIGN KEY (institution_id) REFERENCES institutions(institution_id) ON DELETE CASCADE
+        )
+    """),
     ("users", """
         CREATE TABLE IF NOT EXISTS users (
           user_id    INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -626,4 +685,56 @@ def auto_init_database():
         except Exception:
             pass
 
+        # Multi-tenant migrations
+        try:
+            conn.execute(text("ALTER TABLE users ADD COLUMN institution_id INTEGER"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE students ADD COLUMN institution_id INTEGER"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE supervisors ADD COLUMN institution_id INTEGER"))
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE projects ADD COLUMN institution_id INTEGER"))
+        except Exception:
+            pass
+
+        # Seed KWASU institution #1 if empty
+        try:
+            inst_count = conn.execute(text("SELECT count(*) FROM institutions")).fetchone()[0]
+            if inst_count == 0:
+                conn.execute(text("""
+                    INSERT INTO institutions (
+                        institution_id, name, code, slug, official_domain,
+                        institution_type, state, city, contact_email, contact_phone,
+                        logo_url, primary_color, secondary_color, status,
+                        is_verified, current_stage, onboarding_percent
+                    ) VALUES (
+                        1, 'Kwara State University', 'KWASU', 'kwasu', 'kwasu.edu.ng',
+                        'State University', 'Kwara', 'Malete', 'ict@kwasu.edu.ng', '+2348030000001',
+                        '/kwasu.png', '#16a34a', '#080808', 'active',
+                        1, '7_live_activation', 100
+                    )
+                """))
+                conn.execute(text("""
+                    INSERT INTO institution_settings (
+                        institution_id, academic_session, current_semester, max_supervisor_load,
+                        dual_supervisor_for_postgrad, auto_assign_co_supervisor, enable_ai_pairing
+                    ) VALUES (1, '2025/2026', 'First Semester', 10, 1, 1, 1)
+                """))
+                conn.execute(text("UPDATE users SET institution_id = 1 WHERE institution_id IS NULL"))
+                conn.execute(text("UPDATE students SET institution_id = 1 WHERE institution_id IS NULL"))
+                conn.execute(text("UPDATE supervisors SET institution_id = 1 WHERE institution_id IS NULL"))
+                conn.execute(text("UPDATE projects SET institution_id = 1 WHERE institution_id IS NULL"))
+                print("[*] Seeded primary tenant: Kwara State University (KWASU)")
+        except Exception as e:
+            print(f"[*] Note on institutions seed: {e}")
+
     print("[*] Database verification complete.")
+
+if __name__ == "__main__":
+    auto_init_database()

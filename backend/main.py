@@ -19,6 +19,7 @@ from routes.supervisor import router as supervisor_router
 from routes.admin      import router as admin_router
 from routes.alerts     import router as alerts_router
 from routes.messages   import router as messages_router
+from routes.institutions import router as institutions_router
 
 settings = get_settings()
 limiter  = Limiter(key_func=get_remote_address)
@@ -62,6 +63,7 @@ routers = [
     admin_router,
     alerts_router,
     messages_router,
+    institutions_router,
 ]
 for r in routers:
     app.include_router(r, prefix=API)
