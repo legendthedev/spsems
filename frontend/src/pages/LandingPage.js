@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import ThemeToggle from '../components/ThemeToggle';
+import { resolveLogoUrl } from '../utils/logoHelper';
 
 export default function LandingPage() {
   const { login } = useAuth();
@@ -21,13 +22,13 @@ export default function LandingPage() {
 
   // Institution Branding State
   const [institution, setInstitution] = useState({
-    name: 'Kwara State University',
-    code: 'KWASU',
-    slug: 'kwasu',
-    logo_url: '/kwasu.png',
+    name: targetSlug === 'kwasu' ? 'Kwara State University' : 'Institution Portal',
+    code: targetSlug === 'kwasu' ? 'KWASU' : targetSlug.toUpperCase(),
+    slug: targetSlug,
+    logo_url: targetSlug === 'kwasu' ? '/kwasu.png' : '',
     primary_color: '#16a34a',
     secondary_color: '#080808',
-    domain: 'kwasu.edu.ng',
+    domain: '',
     session: '2025/2026',
     semester: 'First Semester',
     status: 'active',
@@ -48,7 +49,7 @@ export default function LandingPage() {
             name: res.data.name,
             code: res.data.code,
             slug: res.data.slug,
-            logo_url: res.data.logo_url || '/kwasu.png',
+            logo_url: res.data.logo_url || (targetSlug === 'kwasu' ? '/kwasu.png' : ''),
             primary_color: res.data.primary_color || '#16a34a',
             secondary_color: res.data.secondary_color || '#080808',
             domain: res.data.domain,
@@ -154,12 +155,25 @@ export default function LandingPage() {
                       fontWeight: sch.slug === institution.slug ? 700 : 500,
                     }}
                   >
-                    <img
-                      src={sch.logo || '/kwasu.png'}
-                      alt=""
-                      style={s.dropdownLogo}
-                      onError={(e) => { e.target.src = '/kwasu.png'; }}
-                    />
+                    {resolveLogoUrl(sch.logo) && (sch.slug === 'kwasu' || sch.logo !== '/kwasu.png') ? (
+                      <img
+                        src={resolveLogoUrl(sch.logo)}
+                        alt=""
+                        style={s.dropdownLogo}
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          ...s.dropdownFallback,
+                          background: `${sch.primary_color || '#16a34a'}22`,
+                          color: sch.primary_color || '#16a34a',
+                          border: `1px solid ${sch.primary_color || '#16a34a'}44`,
+                        }}
+                      >
+                        {sch.code ? sch.code.slice(0, 3) : (sch.name ? sch.name.slice(0, 2).toUpperCase() : 'UN')}
+                      </div>
+                    )}
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                       <span>{sch.name}</span>
                       <span style={{ fontSize: 10, color: 'var(--text-muted, #9ca3af)' }}>{sch.code}</span>
@@ -181,12 +195,35 @@ export default function LandingPage() {
 
         {/* Institution Brand Header */}
         <div style={s.header}>
-          <img
-            src={institution.logo_url}
-            alt={institution.name}
-            style={s.logoImg}
-            onError={(e) => { e.target.src = '/kwasu.png'; }}
-          />
+          {resolveLogoUrl(institution.logo_url) ? (
+            <img
+              src={resolveLogoUrl(institution.logo_url)}
+              alt={institution.name}
+              style={s.logoImg}
+              onError={(e) => {
+                if (institution.slug === 'kwasu') {
+                  e.target.src = '/kwasu.png';
+                } else {
+                  e.target.style.display = 'none';
+                  const fb = document.getElementById('inst-brand-fallback');
+                  if (fb) fb.style.display = 'flex';
+                }
+              }}
+            />
+          ) : null}
+
+          <div
+            id="inst-brand-fallback"
+            style={{
+              ...s.logoFallbackBadge,
+              display: resolveLogoUrl(institution.logo_url) ? 'none' : 'flex',
+              background: `${primaryColor}22`,
+              border: `2px solid ${primaryColor}55`,
+              color: primaryColor,
+            }}
+          >
+            {institution.code || (institution.name ? institution.name.slice(0, 2).toUpperCase() : 'SP')}
+          </div>
 
           <div
             style={{
@@ -441,6 +478,28 @@ const s = {
     background: 'rgba(255,255,255,0.04)',
     borderRadius: 8,
     padding: 4,
+  },
+  logoFallbackBadge: {
+    width: 54,
+    height: 54,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    margin: '0 auto 10px',
+    fontWeight: 800,
+    fontSize: 16,
+    letterSpacing: '0.5px',
+  },
+  dropdownFallback: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 9,
+    fontWeight: 800,
+    flexShrink: 0,
   },
   nodeBadge: {
     display: 'inline-flex',

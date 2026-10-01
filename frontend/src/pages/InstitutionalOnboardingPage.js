@@ -8,9 +8,26 @@ import {
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import ThemeToggle from '../components/ThemeToggle';
+import { resolveLogoUrl } from '../utils/logoHelper';
 
 // ── SAMPLE PRESETS FOR QUICK ONE-CLICK TESTING ───────────────────────────────
 const SAMPLE_PRESETS = [
+  {
+    name: 'University of Lagos',
+    code: 'UNILAG',
+    domain: 'unilag.edu.ng',
+    type: 'Federal University',
+    state: 'Lagos',
+    city: 'Akoka',
+    primary: '#b91c1c',
+    secondary: '#1e3a8a',
+    admin_name: 'Prof. Folasade Ogunsola',
+    admin_uname: 'unilag_admin',
+    email: 'vc@unilag.edu.ng',
+    session: '2025/2026',
+    semester: 'First Semester',
+    logo_url: '/unilag.svg',
+  },
   {
     name: 'University of Ibadan',
     code: 'UI',
@@ -25,6 +42,7 @@ const SAMPLE_PRESETS = [
     email: 'ict.admin@ui.edu.ng',
     session: '2025/2026',
     semester: 'First Semester',
+    logo_url: '',
   },
   {
     name: 'Obafemi Awolowo University',
@@ -78,7 +96,7 @@ export default function InstitutionalOnboardingPage() {
     city: 'Ilorin',
     contact_email: '',
     contact_phone: '',
-    logo_url: '/kwasu.png',
+    logo_url: '',
     primary_color: '#16a34a',
     secondary_color: '#080808',
     accent_color: '#22c55e',
@@ -97,7 +115,7 @@ export default function InstitutionalOnboardingPage() {
   });
 
   // Logo & Extracted Colors
-  const [logoPreview, setLogoPreview] = useState('/kwasu.png');
+  const [logoPreview, setLogoPreview] = useState(null);
   const [logoFile, setLogoFile] = useState(null);
   const [extractedPalette, setExtractedPalette] = useState([
     '#16a34a', '#15803d', '#22c55e', '#0f172a', '#1e293b', '#eab308'
@@ -119,6 +137,7 @@ export default function InstitutionalOnboardingPage() {
       city: preset.city,
       contact_email: preset.email,
       contact_phone: '+23480' + Math.floor(10000000 + Math.random() * 90000000),
+      logo_url: preset.logo_url || '',
       primary_color: preset.primary,
       secondary_color: preset.secondary,
       admin_fullname: preset.admin_name,
@@ -126,6 +145,8 @@ export default function InstitutionalOnboardingPage() {
       admin_password: 'password123',
       confirm_password: 'password123',
     }));
+    setLogoPreview(preset.logo_url || null);
+    setLogoFile(null);
     setExtractedPalette([
       preset.primary,
       preset.secondary,
@@ -229,6 +250,31 @@ export default function InstitutionalOnboardingPage() {
           update('accent_color', palette[2] || adjustBrightness(primaryChoice, 40));
           setExtractedPalette(palette);
 
+          // Generate an optimized thumbnail base64 Data URL for the submitted logo
+          try {
+            const thumbCanvas = document.createElement('canvas');
+            const maxDim = 280;
+            let w = img.width || maxDim;
+            let h = img.height || maxDim;
+            if (w > maxDim || h > maxDim) {
+              if (w > h) {
+                h = Math.round((h * maxDim) / w);
+                w = maxDim;
+              } else {
+                w = Math.round((w * maxDim) / h);
+                h = maxDim;
+              }
+            }
+            thumbCanvas.width = Math.max(w, 40);
+            thumbCanvas.height = Math.max(h, 40);
+            const thumbCtx = thumbCanvas.getContext('2d');
+            thumbCtx.drawImage(img, 0, 0, thumbCanvas.width, thumbCanvas.height);
+            const dataUrl = thumbCanvas.toDataURL('image/png', 0.95);
+            update('logo_url', dataUrl);
+          } catch (canvasErr) {
+            console.warn('Canvas thumbnail generation skipped:', canvasErr);
+          }
+
           toast.success(
             <span>
               🎯 Extracted official palette: <b>{primaryChoice}</b> (Primary) &amp; <b>{secondaryChoice}</b>
@@ -258,6 +304,15 @@ export default function InstitutionalOnboardingPage() {
     const objectUrl = URL.createObjectURL(file);
     setLogoPreview(objectUrl);
     processImageForColors(objectUrl);
+
+    // Read directly as Data URL for immediate fallback
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      if (ev.target?.result) {
+        update('logo_url', ev.target.result);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   // Helper RGB to Hex
@@ -323,11 +378,13 @@ export default function InstitutionalOnboardingPage() {
           const upRes = await api.post('/institutions/upload-logo', formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
           });
-          if (upRes.data?.logo_url) {
+          if (upRes.data?.data_url) {
+            uploadedLogoUrl = upRes.data.data_url;
+          } else if (upRes.data?.logo_url) {
             uploadedLogoUrl = upRes.data.logo_url;
           }
         } catch (uploadErr) {
-          console.warn('Logo upload fallback to default:', uploadErr);
+          console.warn('Logo upload fallback to client data URL:', uploadErr);
         }
       }
 
@@ -342,7 +399,7 @@ export default function InstitutionalOnboardingPage() {
         city: form.city,
         contact_email: form.contact_email.trim().toLowerCase(),
         contact_phone: form.contact_phone,
-        logo_url: uploadedLogoUrl,
+        logo_url: uploadedLogoUrl || form.logo_url || null,
         primary_color: form.primary_color,
         secondary_color: form.secondary_color,
         accent_color: form.accent_color,
@@ -676,9 +733,9 @@ export default function InstitutionalOnboardingPage() {
                   />
                   {logoPreview ? (
                     <div style={s.logoPreviewContainer}>
-                      <img src={logoPreview} alt="School Logo Preview" style={s.logoPreviewImg} />
+                      <img src={resolveLogoUrl(logoPreview)} alt="School Logo Preview" style={s.logoPreviewImg} />
                       <div style={s.logoPreviewMeta}>
-                        <div style={s.logoTitle}>{logoFile ? logoFile.name : 'Default Logo'}</div>
+                        <div style={s.logoTitle}>{logoFile ? logoFile.name : (form.name ? `${form.name} Emblem` : 'Uploaded Emblem')}</div>
                         <div style={s.logoSub}>Click to replace emblem (PNG, JPG, SVG, WEBP)</div>
                       </div>
                     </div>
@@ -784,7 +841,13 @@ export default function InstitutionalOnboardingPage() {
                   {/* Mock Navbar */}
                   <div style={{ ...s.mockNav, borderTop: `4px solid ${form.primary_color}` }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <img src={logoPreview} alt="Logo" style={s.mockLogo} />
+                      {logoPreview ? (
+                        <img src={resolveLogoUrl(logoPreview)} alt="Logo" style={s.mockLogo} />
+                      ) : (
+                        <div style={{ ...s.mockLogo, background: `${form.primary_color}22`, border: `1px solid ${form.primary_color}55`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <School size={16} color={form.primary_color} />
+                        </div>
+                      )}
                       <div>
                         <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--text-primary, #fff)' }}>
                           {form.name || 'Your University Name'} ({form.code || 'CODE'})

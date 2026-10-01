@@ -37,10 +37,13 @@ def _audit(db: Session, user_id, username, role, action, ip, ok: bool):
 def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
     rows = db.execute(
         text("""SELECT u.*,
+             inst.name AS institution_name, inst.code AS institution_code, inst.slug AS institution_slug,
+             inst.logo_url AS institution_logo, inst.primary_color AS institution_primary_color,
              s.supervisor_id, s.expertise_areas, s.max_load, s.current_load, s.department AS sup_dept,
              st.student_id, st.matric_number, st.department AS stu_dept, st.level, st.project_id,
              st.supervisor_id AS student_sup_id, st.co_supervisor_id
            FROM users u
+           LEFT JOIN institutions inst ON u.institution_id=inst.institution_id
            LEFT JOIN supervisors s  ON u.user_id=s.user_id
            LEFT JOIN students    st ON u.user_id=st.user_id
            WHERE u.username=:username AND u.is_active=1"""),
@@ -76,15 +79,21 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
         "token": token,
         "user": {
             **payload,
-            "sup_dept":         row.get("sup_dept"),
-            "stu_dept":         row.get("stu_dept"),
-            "matric_number":    row.get("matric_number"),
-            "level":            row.get("level"),
-            "project_id":       row.get("project_id"),
-            "expertise_areas":  row.get("expertise_areas"),
-            "max_load":         row.get("max_load"),
-            "current_load":     row.get("current_load"),
-            "co_supervisor_id": row.get("co_supervisor_id"),
+            "institution_id":            row.get("institution_id"),
+            "institution_name":          row.get("institution_name") or "Kwara State University",
+            "institution_code":          row.get("institution_code") or "KWASU",
+            "institution_slug":          row.get("institution_slug") or "kwasu",
+            "institution_logo":          row.get("institution_logo") or ("/kwasu.png" if (row.get("institution_slug") or "kwasu") == "kwasu" else None),
+            "institution_primary_color": row.get("institution_primary_color") or "#16a34a",
+            "sup_dept":                  row.get("sup_dept"),
+            "stu_dept":                  row.get("stu_dept"),
+            "matric_number":             row.get("matric_number"),
+            "level":                     row.get("level"),
+            "project_id":                row.get("project_id"),
+            "expertise_areas":           row.get("expertise_areas"),
+            "max_load":                  row.get("max_load"),
+            "current_load":              row.get("current_load"),
+            "co_supervisor_id":          row.get("co_supervisor_id"),
         },
     }
 
@@ -103,10 +112,14 @@ def register(
 def profile(current: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     row = db.execute(
         text("""SELECT u.user_id,u.username,u.email,u.full_name,u.role,u.phone,u.avatar_url,u.created_at,
+             u.institution_id, inst.name AS institution_name, inst.code AS institution_code,
+             inst.slug AS institution_slug, inst.logo_url AS institution_logo,
+             inst.primary_color AS institution_primary_color,
              s.supervisor_id,s.expertise_areas,s.max_load,s.current_load,s.department AS sup_dept,s.bio,
              st.student_id,st.matric_number,st.department AS stu_dept,st.level,st.project_id,st.research_domain,
              st.supervisor_id AS student_sup_id, st.co_supervisor_id
            FROM users u
+           LEFT JOIN institutions inst ON u.institution_id=inst.institution_id
            LEFT JOIN supervisors s  ON u.user_id=s.user_id
            LEFT JOIN students    st ON u.user_id=st.user_id
            WHERE u.user_id=:user_id"""),
@@ -114,7 +127,16 @@ def profile(current: dict = Depends(get_current_user), db: Session = Depends(get
     ).fetchone()
     if not row:
         raise HTTPException(404, "User not found.")
-    return {"success": True, "user": dict(row._mapping)}
+    u_dict = dict(row._mapping)
+    if not u_dict.get("institution_name"):
+        u_dict["institution_name"] = "Kwara State University"
+        u_dict["institution_code"] = "KWASU"
+        u_dict["institution_slug"] = "kwasu"
+        u_dict["institution_logo"] = "/kwasu.png"
+        u_dict["institution_primary_color"] = "#16a34a"
+    elif not u_dict.get("institution_logo") and u_dict.get("institution_slug") == "kwasu":
+        u_dict["institution_logo"] = "/kwasu.png"
+    return {"success": True, "user": u_dict}
 
 
 @router.patch("/profile/avatar")
@@ -158,18 +180,32 @@ def _do_register(body, db: Session) -> int:
         if dup:
             raise HTTPException(409, "Matric number already registered.")
 
+    # Resolve institution
+    inst_id = getattr(body, "institution_id", None)
+    inst_slug = getattr(body, "institution_slug", None)
+    if not inst_id and inst_slug:
+        inst_row = db.execute(
+            text("SELECT institution_id FROM institutions WHERE LOWER(slug)=:s OR UPPER(code)=:c"),
+            {"s": inst_slug.lower().strip(), "c": inst_slug.upper().strip()}
+        ).fetchone()
+        if inst_row:
+            inst_id = inst_row[0]
+    if not inst_id:
+        inst_id = 1  # KWASU default
+
     hashed = _hash_pw(body.password)
     result = db.execute(
-        text("""INSERT INTO users (username,email,password,role,full_name,phone,is_active)
-           VALUES (:username,:email,:password,:role,:full_name,:phone,:is_active)"""),
+        text("""INSERT INTO users (username,email,password,role,full_name,phone,is_active,institution_id)
+           VALUES (:username,:email,:password,:role,:full_name,:phone,:is_active,:institution_id)"""),
         {
-            "username":  body.username,
-            "email":     body.email.lower(),
-            "password":  hashed,
-            "role":      body.role,
-            "full_name": body.full_name,
-            "phone":     body.phone,
-            "is_active": 1,
+            "username":       body.username,
+            "email":          body.email.lower(),
+            "password":       hashed,
+            "role":           body.role,
+            "full_name":      body.full_name,
+            "phone":          body.phone,
+            "is_active":      1,
+            "institution_id": inst_id,
         },
     )
     db.commit()
@@ -209,10 +245,20 @@ def _do_register(body, db: Session) -> int:
             dept_sups = db.execute(
                 text("""SELECT s.supervisor_id FROM supervisors s
                         JOIN users u ON s.user_id=u.user_id
-                        WHERE u.is_active=1 AND s.department=:dept"""),
-                {"dept": dept}
+                        WHERE u.is_active=1 AND s.department=:dept
+                          AND (u.institution_id=:inst_id OR u.institution_id IS NULL)"""),
+                {"dept": dept, "inst_id": inst_id}
             ).fetchall()
             all_sups = [r[0] for r in dept_sups]
+
+            if not all_sups:
+                fallback_sups = db.execute(
+                    text("""SELECT s.supervisor_id FROM supervisors s
+                            JOIN users u ON s.user_id=u.user_id
+                            WHERE u.is_active=1 AND (u.institution_id=:inst_id OR u.institution_id IS NULL)"""),
+                    {"inst_id": inst_id}
+                ).fetchall()
+                all_sups = [r[0] for r in fallback_sups]
 
             if not all_sups:
                 fallback_sups = db.execute(

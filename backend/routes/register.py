@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -53,14 +54,34 @@ def register_public(body: RegisterPublicRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/auth/supervisors-public")
-def get_supervisors_public(db: Session = Depends(get_db)):
-    rows = db.execute(
-        text("""SELECT s.supervisor_id, s.department, s.expertise_areas, u.full_name, u.email
-                FROM supervisors s
-                JOIN users u ON s.user_id=u.user_id
-                WHERE u.is_active=1
-                ORDER BY u.full_name ASC""")
-    ).fetchall()
+def get_supervisors_public(institution: Optional[str] = None, db: Session = Depends(get_db)):
+    if institution:
+        rows = db.execute(
+            text("""SELECT s.supervisor_id, s.department, s.expertise_areas, u.full_name, u.email
+                    FROM supervisors s
+                    JOIN users u ON s.user_id=u.user_id
+                    LEFT JOIN institutions inst ON u.institution_id=inst.institution_id
+                    WHERE u.is_active=1 AND (LOWER(inst.slug)=:slug OR UPPER(inst.code)=:code)
+                    ORDER BY u.full_name ASC"""),
+            {"slug": institution.lower().strip(), "code": institution.upper().strip()}
+        ).fetchall()
+        if not rows:
+            # Fallback to general active supervisors if school has none yet
+            rows = db.execute(
+                text("""SELECT s.supervisor_id, s.department, s.expertise_areas, u.full_name, u.email
+                        FROM supervisors s
+                        JOIN users u ON s.user_id=u.user_id
+                        WHERE u.is_active=1
+                        ORDER BY u.full_name ASC""")
+            ).fetchall()
+    else:
+        rows = db.execute(
+            text("""SELECT s.supervisor_id, s.department, s.expertise_areas, u.full_name, u.email
+                    FROM supervisors s
+                    JOIN users u ON s.user_id=u.user_id
+                    WHERE u.is_active=1
+                    ORDER BY u.full_name ASC""")
+        ).fetchall()
     return {"success": True, "supervisors": [dict(r._mapping) for r in rows]}
 
 

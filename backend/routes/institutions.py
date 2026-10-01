@@ -9,11 +9,12 @@ and tenant super-admin credential provisioning.
 import os
 import re
 import uuid
+import base64
 from datetime import datetime
 from typing import Optional, List
 
 import bcrypt
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -41,7 +42,7 @@ class SchoolOnboardRequest(BaseModel):
     city: Optional[str] = "Ilorin"
     contact_email: EmailStr
     contact_phone: Optional[str] = None
-    logo_url: Optional[str] = "/kwasu.png"
+    logo_url: Optional[str] = None
     primary_color: Optional[str] = "#16a34a"
     secondary_color: Optional[str] = "#080808"
     accent_color: Optional[str] = "#22c55e"
@@ -72,12 +73,19 @@ class UpdateSettingsRequest(BaseModel):
     enable_ai_pairing: Optional[bool] = True
 
 
+class UpdateBrandingRequest(BaseModel):
+    logo_url: Optional[str] = None
+    primary_color: Optional[str] = None
+    secondary_color: Optional[str] = None
+
+
 # ── LOGO UPLOAD ENDPOINT ─────────────────────────────────────────────────────
 
 @router.post("/upload-logo")
 async def upload_institution_logo(file: UploadFile = File(...)):
     """
     Accepts official school emblem / logo and saves it to static uploads directory.
+    Returns both static relative URL and Base64 data URL for cross-environment compatibility.
     """
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"}:
@@ -95,11 +103,24 @@ async def upload_institution_logo(file: UploadFile = File(...)):
     with open(fpath, "wb") as fout:
         fout.write(contents)
 
+    mime_map = {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".webp": "image/webp",
+        ".svg": "image/svg+xml",
+        ".gif": "image/gif",
+    }
+    mime = mime_map.get(ext, "image/png")
+    b64_str = base64.b64encode(contents).decode("utf-8")
+    data_url = f"data:{mime};base64,{b64_str}"
     logo_url = f"/uploads/institutions/{fname}"
+
     return {
         "success": True,
         "message": "Logo uploaded successfully.",
-        "logo_url": logo_url
+        "logo_url": logo_url,
+        "data_url": data_url
     }
 
 
@@ -183,7 +204,7 @@ def onboard_institution(req: SchoolOnboardRequest, db: Session = Depends(get_db)
                 "city": req.city or "",
                 "email": admin_email,
                 "phone": req.contact_phone,
-                "logo_url": req.logo_url or "/kwasu.png",
+                "logo_url": req.logo_url.strip() if (req.logo_url and req.logo_url.strip()) else ("/kwasu.png" if slug == "kwasu" else None),
                 "pcolor": req.primary_color or "#16a34a",
                 "scolor": req.secondary_color or "#080808",
                 "status": inst_status,
@@ -313,7 +334,7 @@ def onboard_institution(req: SchoolOnboardRequest, db: Session = Depends(get_db)
         "status": inst_status,
         "is_verified": is_verified,
         "onboarding_percent": onboarding_percent,
-        "logo_url": req.logo_url or "/kwasu.png",
+        "logo_url": req.logo_url or ("/kwasu.png" if slug == "kwasu" else None),
         "primary_color": req.primary_color or "#16a34a",
         "secondary_color": req.secondary_color or "#080808",
         "admin_username": admin_uname,
@@ -571,3 +592,133 @@ def get_institution_by_slug(slug: str, db: Session = Depends(get_db)):
         "semester": row.current_semester,
         "dual_supervisor_for_postgrad": bool(row.dual_supervisor_for_postgrad),
     }
+
+
+# ── UPDATE INSTITUTION LOGO & BRANDING ────────────────────────────────────────
+
+@router.post("/{slug_or_code}/update-logo")
+def update_institution_logo(
+    slug_or_code: str,
+    body: UpdateBrandingRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Updates the official submitted logo and brand colors for a specific school.
+    Accepts Base64 data URL or static URL.
+    """
+    clean = slug_or_code.strip()
+    inst = db.execute(
+        text("SELECT institution_id, name, code, slug FROM institutions WHERE LOWER(slug)=:s OR UPPER(code)=:c"),
+        {"s": clean.lower(), "c": clean.upper()}
+    ).fetchone()
+
+    if not inst:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Institution '{clean}' not found.")
+
+    updates = []
+    params = {"id": inst.institution_id}
+
+    if body.logo_url:
+        updates.append("logo_url = :logo_url")
+        params["logo_url"] = body.logo_url.strip()
+    if body.primary_color:
+        updates.append("primary_color = :pcolor")
+        params["pcolor"] = body.primary_color.strip()
+    if body.secondary_color:
+        updates.append("secondary_color = :scolor")
+        params["scolor"] = body.secondary_color.strip()
+
+    if updates:
+        sql = f"UPDATE institutions SET {', '.join(updates)} WHERE institution_id = :id"
+        db.execute(text(sql), params)
+        db.commit()
+
+    updated = db.execute(
+        text("SELECT institution_id, name, code, slug, logo_url, primary_color, secondary_color FROM institutions WHERE institution_id=:id"),
+        {"id": inst.institution_id}
+    ).fetchone()
+
+    return {
+        "success": True,
+        "message": f"Official logo and branding for {inst.name} ({inst.code}) updated successfully.",
+        "institution": {
+            "id": updated.institution_id,
+            "name": updated.name,
+            "code": updated.code,
+            "slug": updated.slug,
+            "logo_url": updated.logo_url,
+            "primary_color": updated.primary_color,
+            "secondary_color": updated.secondary_color,
+        }
+    }
+
+
+@router.post("/{slug_or_code}/upload-and-update-logo")
+async def upload_and_update_institution_logo(
+    slug_or_code: str,
+    file: UploadFile = File(...),
+    primary_color: Optional[str] = Form(None),
+    secondary_color: Optional[str] = Form(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Accepts direct image file upload and updates the school's logo immediately.
+    """
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"}:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Only image files (.png, .jpg, .svg, .webp) are accepted."
+        )
+
+    clean = slug_or_code.strip()
+    inst = db.execute(
+        text("SELECT institution_id, name, code, slug FROM institutions WHERE LOWER(slug)=:s OR UPPER(code)=:c"),
+        {"s": clean.lower(), "c": clean.upper()}
+    ).fetchone()
+
+    if not inst:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Institution '{clean}' not found.")
+
+    inst_dir = os.path.join(settings.upload_dir, "institutions")
+    os.makedirs(inst_dir, exist_ok=True)
+    fname = f"logo_{inst.slug}_{uuid.uuid4().hex[:8]}{ext}"
+    fpath = os.path.join(inst_dir, fname)
+
+    contents = await file.read()
+    with open(fpath, "wb") as fout:
+        fout.write(contents)
+
+    mime_map = {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".webp": "image/webp",
+        ".svg": "image/svg+xml",
+        ".gif": "image/gif",
+    }
+    mime = mime_map.get(ext, "image/png")
+    b64_str = base64.b64encode(contents).decode("utf-8")
+    data_url = f"data:{mime};base64,{b64_str}"
+
+    updates = ["logo_url = :logo_url"]
+    params = {"id": inst.institution_id, "logo_url": data_url}
+
+    if primary_color:
+        updates.append("primary_color = :pcolor")
+        params["pcolor"] = primary_color
+    if secondary_color:
+        updates.append("secondary_color = :scolor")
+        params["scolor"] = secondary_color
+
+    sql = f"UPDATE institutions SET {', '.join(updates)} WHERE institution_id = :id"
+    db.execute(text(sql), params)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"Official logo for {inst.name} ({inst.code}) updated successfully.",
+        "logo_url": data_url,
+        "static_url": f"/uploads/institutions/{fname}"
+    }
+

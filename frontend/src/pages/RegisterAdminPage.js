@@ -1,17 +1,45 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import ThemeToggle from '../components/ThemeToggle';
+import { resolveLogoUrl } from '../utils/logoHelper';
 
 export default function RegisterAdminPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const instSlug = (searchParams.get('institution') || 'kwasu').toLowerCase();
+
+  const [institution, setInstitution] = useState({
+    name: instSlug === 'kwasu' ? 'Kwara State University' : 'Institution Portal',
+    code: instSlug === 'kwasu' ? 'KWASU' : instSlug.toUpperCase(),
+    slug: instSlug,
+    logo_url: instSlug === 'kwasu' ? '/kwasu.png' : '',
+    primary_color: '#16a34a',
+  });
+
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
     full_name: '', username: '', email: '', phone: '',
     admin_code: '', password: '', confirm_password: '',
   });
+
+  useEffect(() => {
+    api.get(`/institutions/by-slug/${instSlug}`)
+      .then(res => {
+        if (res.data) {
+          setInstitution({
+            name: res.data.name,
+            code: res.data.code,
+            slug: res.data.slug,
+            logo_url: res.data.logo_url || (instSlug === 'kwasu' ? '/kwasu.png' : ''),
+            primary_color: res.data.primary_color || '#16a34a',
+          });
+        }
+      })
+      .catch(() => {});
+  }, [instSlug]);
 
   const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
 
@@ -24,22 +52,25 @@ export default function RegisterAdminPage() {
     setBusy(true);
     try {
       await api.post('/auth/register-public', {
-        role:       'admin',
-        full_name:  form.full_name,
-        username:   form.username,
-        email:      form.email,
-        password:   form.password,
-        phone:      form.phone || undefined,
-        admin_code: form.admin_code,
+        role:             'admin',
+        full_name:        form.full_name,
+        username:         form.username,
+        email:            form.email,
+        password:         form.password,
+        phone:            form.phone || undefined,
+        admin_code:       form.admin_code,
+        institution_slug: institution.slug,
       });
       toast.success('Admin registration submitted. Awaiting approval before you can log in.');
-      navigate('/login');
+      navigate(institution.slug === 'kwasu' ? '/login' : `/login/${institution.slug}`);
     } catch (err) {
       toast.error(err.response?.data?.detail || err.response?.data?.message || 'Registration failed. Check your admin code.');
     } finally {
       setBusy(false);
     }
   };
+
+  const primaryColor = institution.primary_color || '#16a34a';
 
   return (
     <div style={s.page}>
@@ -48,13 +79,42 @@ export default function RegisterAdminPage() {
       </div>
       <div style={s.card}>
         <div style={s.header}>
-          <img src="/kwasu.png" alt="KWASU" style={s.logoImg} />
-          <div style={s.titleRow}>
-            <ShieldCheck size={20} color="#16a34a" />
-            <h2 style={s.title}>Admin Registration</h2>
+          {resolveLogoUrl(institution.logo_url) ? (
+            <img
+              src={resolveLogoUrl(institution.logo_url)}
+              alt={institution.name}
+              style={s.logoImg}
+              onError={(e) => {
+                if (institution.slug === 'kwasu') {
+                  e.target.src = '/kwasu.png';
+                } else {
+                  e.target.style.display = 'none';
+                  const fb = document.getElementById('inst-admin-fallback');
+                  if (fb) fb.style.display = 'flex';
+                }
+              }}
+            />
+          ) : institution.slug === 'kwasu' ? (
+            <img src="/kwasu.png" alt="KWASU" style={s.logoImg} />
+          ) : null}
+          <div
+            id="inst-admin-fallback"
+            style={{
+              ...s.logoFallbackBadge,
+              display: resolveLogoUrl(institution.logo_url) || institution.slug === 'kwasu' ? 'none' : 'flex',
+              background: `${primaryColor}22`,
+              border: `2px solid ${primaryColor}55`,
+              color: primaryColor,
+            }}
+          >
+            {institution.code || 'SP'}
           </div>
-          <p style={s.subtitle}>Create an Admin / HOD account</p>
-          <div style={s.divider} />
+          <div style={s.titleRow}>
+            <ShieldCheck size={20} color={primaryColor} />
+            <h2 style={s.title}>{institution.code} Admin Registration</h2>
+          </div>
+          <p style={s.subtitle}>Create an Admin / HOD account for {institution.name}</p>
+          <div style={{ ...s.divider, background: primaryColor }} />
         </div>
 
         <form onSubmit={handleSubmit} style={s.form}>
@@ -91,17 +151,37 @@ export default function RegisterAdminPage() {
             Admin accounts require a valid registration code and are subject to approval before activation.
           </div>
 
-          <button type="submit" style={busy ? { ...s.btn, opacity: 0.6 } : s.btn} disabled={busy}>
-            {busy ? 'Submitting...' : 'Create Admin Account'}
+          <button
+            type="submit"
+            style={busy ? { ...s.btn, background: primaryColor, opacity: 0.6 } : { ...s.btn, background: primaryColor }}
+            disabled={busy}
+          >
+            {busy ? 'Submitting...' : `Create ${institution.code} Admin Account`}
           </button>
         </form>
 
         <p style={s.footer}>
-          Already have an account?{' '}<Link to="/login" style={s.link}>Sign in</Link>
+          Already have an account?{' '}
+          <Link
+            to={institution.slug === 'kwasu' ? '/login' : `/login/${institution.slug}`}
+            style={{ ...s.link, color: primaryColor }}
+          >
+            Sign in
+          </Link>
           {'  ·  '}
-          <Link to="/register" style={s.link}>Student</Link>
+          <Link
+            to={`/register?institution=${institution.slug}`}
+            style={{ ...s.link, color: primaryColor }}
+          >
+            Student
+          </Link>
           {'  ·  '}
-          <Link to="/register/lecturer" style={s.link}>Lecturer</Link>
+          <Link
+            to={`/register/lecturer?institution=${institution.slug}`}
+            style={{ ...s.link, color: primaryColor }}
+          >
+            Lecturer
+          </Link>
         </p>
       </div>
     </div>
@@ -142,6 +222,17 @@ const s = {
   },
   header:   { textAlign: 'center', marginBottom: 24 },
   logoImg:  { height: 46, display: 'block', margin: '0 auto 14px' },
+  logoFallbackBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    margin: '0 auto 14px',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 800,
+    fontSize: 16,
+    letterSpacing: '1px',
+  },
   titleRow: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 6 },
   title:    { fontSize: 22, fontWeight: 800, color: 'var(--text-primary, #ffffff)', letterSpacing: '-0.3px' },
   subtitle: { fontSize: 12, color: 'var(--text-dim, #6b7280)' },

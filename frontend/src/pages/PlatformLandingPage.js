@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import ThemeToggle from '../components/ThemeToggle';
+import { resolveLogoUrl } from '../utils/logoHelper';
 
 export default function PlatformLandingPage() {
   const [directory, setDirectory] = useState([]);
@@ -246,9 +247,9 @@ export default function PlatformLandingPage() {
                   }}
                 >
                   <div style={s.schoolCardTop}>
-                    {inst.logo && inst.logo !== '/kwasu.png' ? (
+                    {resolveLogoUrl(inst.logo) && (inst.slug === 'kwasu' || inst.logo !== '/kwasu.png') ? (
                       <img
-                        src={inst.logo}
+                        src={resolveLogoUrl(inst.logo)}
                         alt={inst.name}
                         style={s.schoolCardLogo}
                         onError={(e) => { e.target.style.display = 'none'; }}

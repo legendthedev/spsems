@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { LayoutDashboard, UserCog, Zap, Shuffle, History, Bell, LogOut, FolderOpen, BarChart2, Cpu } from 'lucide-react';
+import { LayoutDashboard, UserCog, Zap, Shuffle, History, Bell, LogOut, FolderOpen, BarChart2, Cpu, Building2, Upload } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
+import { resolveLogoUrl } from '../utils/logoHelper';
 
 export default function AdminPortal() {
   const { user, logout, refreshUser } = useAuth();
@@ -37,7 +38,7 @@ export default function AdminPortal() {
 
   return (
     <div style={s.layout}>
-      <Sidebar active={tab} onTab={setTab} onLogout={logout} unread={unread} role={user?.role} />
+      <Sidebar active={tab} onTab={setTab} onLogout={logout} unread={unread} role={user?.role} user={user} />
       <main style={s.main}>
         <TopBar title={TAB_TITLES[tab] || 'Admin Portal'} user={user} onProfile={() => setTab('profile')} />
         <div style={s.content}>
@@ -576,6 +577,35 @@ function ProfileTab({ user, onUpdate }) {
   const fileRef = useRef(null);
   const [uploading, setUploading] = useState(false);
 
+  const instLogoRef = useRef(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  const handleInstLogoFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingLogo(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        try {
+          const dataUrl = ev.target.result;
+          const targetSlug = user?.institution_slug || user?.institution_code || 'kwasu';
+          await api.post(`/institutions/${targetSlug}/update-logo`, { logo_url: dataUrl });
+          toast.success(`Official logo for ${user?.institution_name || user?.institution_code || 'institution'} updated!`);
+          onUpdate();
+        } catch {
+          toast.error('Failed to update institution logo.');
+        } finally {
+          setUploadingLogo(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      toast.error('Could not process selected image.');
+      setUploadingLogo(false);
+    }
+  };
+
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -620,6 +650,54 @@ function ProfileTab({ user, onUpdate }) {
             <p style={{ fontSize: 13, color: '#e5e7eb' }}>{val}</p>
           </div>
         ))}
+      </div>
+
+      {/* ── Official Institution Branding & Logo Section ── */}
+      <div style={{ ...s.card, marginTop: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div>
+            <h3 style={s.cardTitle}>Official Institution Logo &amp; Branding</h3>
+            <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>
+              Upload your university official emblem to update the portal logo and institutional colors across the platform.
+            </p>
+          </div>
+          <span style={{ fontSize: 11, background: 'rgba(34,197,94,0.15)', color: '#22c55e', padding: '4px 10px', borderRadius: 20, fontWeight: 700 }}>
+            {user?.institution_code || 'KWASU'} Active Node
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap', marginBottom: 18 }}>
+          <div style={{ width: 84, height: 84, borderRadius: 14, background: 'rgba(255,255,255,0.04)', border: '1.5px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: 6 }}>
+            {resolveLogoUrl(user?.institution_logo) ? (
+              <img src={resolveLogoUrl(user.institution_logo)} alt="School Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            ) : (
+              <Building2 size={36} color="#16a34a" />
+            )}
+          </div>
+          <div style={{ flex: 1, minWidth: 240 }}>
+            <h4 style={{ fontSize: 15, fontWeight: 700, color: '#fff', margin: 0 }}>
+              {user?.institution_name || 'Kwara State University'}
+            </h4>
+            <p style={{ fontSize: 12, color: '#9ca3af', margin: '4px 0 10px' }}>
+              Official Code: <b>{user?.institution_code || 'KWASU'}</b> • Slug: <code>{user?.institution_slug || 'kwasu'}</code>
+            </p>
+            <input
+              ref={instLogoRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={handleInstLogoFile}
+            />
+            <button
+              style={{ ...s.smBtn, background: '#16a34a', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              onClick={() => instLogoRef.current?.click()}
+              disabled={uploadingLogo}
+            >
+              <Upload size={13} />
+              <span>{uploadingLogo ? 'Updating Official Logo…' : 'Upload & Update School Logo'}</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1149,7 +1227,7 @@ function BarRow({ label, value, pct, color, showCount }) {
 }
 
 // ─── SHARED ───────────────────────────────────
-function Sidebar({ role, active, onTab, onLogout, unread }) {
+function Sidebar({ role, active, onTab, onLogout, unread, user }) {
   const tabs = [
     { id: 'dashboard', label: 'Dashboard',         Icon: LayoutDashboard },
     { id: 'projects',  label: 'Projects',          Icon: FolderOpen },
@@ -1161,14 +1239,59 @@ function Sidebar({ role, active, onTab, onLogout, unread }) {
     { id: 'metrics',    label: 'Performance',          Icon: BarChart2 },
     { id: 'ml-metrics', label: 'ML Engine',           Icon: Cpu },
   ];
+  const logo = resolveLogoUrl(user?.institution_logo);
+  const isKwasu = !user?.institution_slug || user?.institution_slug === 'kwasu' || user?.institution_code === 'KWASU';
+  const instCode = user?.institution_code || 'KWASU';
+  const primaryColor = user?.institution_primary_color || '#22c55e';
+
   return (
     <aside style={s.sidebar}>
       <div style={s.sideHeader}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-          <img src="/kwasu.png" alt="KWASU" style={s.logoImg} />
+          {logo ? (
+            <img
+              src={logo}
+              alt={instCode}
+              style={s.logoImg}
+              onError={(e) => {
+                if (isKwasu) {
+                  e.target.src = '/kwasu.png';
+                } else {
+                  e.target.style.display = 'none';
+                  const fb = document.getElementById('admin-sidebar-fallback');
+                  if (fb) fb.style.display = 'flex';
+                }
+              }}
+            />
+          ) : isKwasu ? (
+            <img src="/kwasu.png" alt="KWASU" style={s.logoImg} />
+          ) : null}
+          <div
+            id="admin-sidebar-fallback"
+            style={{
+              display: (logo || isKwasu) ? 'none' : 'flex',
+              width: 38,
+              height: 38,
+              borderRadius: 8,
+              background: `${primaryColor}22`,
+              border: `1.5px solid ${primaryColor}55`,
+              color: primaryColor,
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 800,
+              fontSize: 13,
+              flexShrink: 0
+            }}
+          >
+            {instCode.slice(0, 3)}
+          </div>
           <div>
-            <div style={{ color: 'var(--text-primary, #ffffff)', fontWeight: 800, fontSize: 16, letterSpacing: '0.5px', lineHeight: 1.2 }}>KWASU</div>
-            <div style={{ color: '#22c55e', fontSize: 10, fontWeight: 700, letterSpacing: '1px' }}>SPSEMS</div>
+            <div style={{ color: 'var(--text-primary, #ffffff)', fontWeight: 800, fontSize: 16, letterSpacing: '0.5px', lineHeight: 1.2 }}>
+              {instCode}
+            </div>
+            <div style={{ color: primaryColor, fontSize: 10, fontWeight: 700, letterSpacing: '1px' }}>
+              SPSEMS
+            </div>
           </div>
         </div>
         <p style={s.sideRole}>ADMINISTRATOR</p>

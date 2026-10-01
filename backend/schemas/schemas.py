@@ -39,6 +39,9 @@ class RegisterPublicRequest(BaseModel):
     password:   str      = Field(..., min_length=6)
     full_name:  str      = Field(..., min_length=2)
     phone:      Optional[str] = None
+    # Institution
+    institution_id:   Optional[int] = None
+    institution_slug: Optional[str] = None
     # Student fields
     matric_number:   Optional[str] = None
     department:      Optional[str] = "Computer Science"

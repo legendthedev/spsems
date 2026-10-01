@@ -4,6 +4,7 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 import { LayoutDashboard, FileText, Upload, Bell, MessageSquare, LogOut } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
+import { resolveLogoUrl } from '../utils/logoHelper';
 
 export default function StudentPortal() {
   const { user, logout, refreshUser } = useAuth();
@@ -35,7 +36,7 @@ export default function StudentPortal() {
 
   return (
     <div style={s.layout}>
-      <Sidebar role={user?.role} active={tab} onTab={setTab} onLogout={logout} unread={unread} />
+      <Sidebar role={user?.role} active={tab} onTab={setTab} onLogout={logout} unread={unread} user={user} />
       <main style={s.main}>
         <TopBar title={TAB_TITLES[tab] || 'Student Portal'} user={user} onProfile={() => setTab('profile')} />
         <div style={s.content}>
@@ -414,7 +415,7 @@ function ProfileTab({ user, onUpdate }) {
 }
 
 // ─── SHARED COMPONENTS ────────────────────────
-function Sidebar({ role, active, onTab, onLogout, unread }) {
+function Sidebar({ role, active, onTab, onLogout, unread, user }) {
   const tabs = [
     { id: 'dashboard', label: 'Dashboard',  Icon: LayoutDashboard },
     { id: 'proposal',  label: 'Proposal',   Icon: FileText },
@@ -422,14 +423,59 @@ function Sidebar({ role, active, onTab, onLogout, unread }) {
     { id: 'alerts',    label: `Alerts${unread > 0 ? ` (${unread})` : ''}`, Icon: Bell },
     { id: 'messages',  label: 'Messages',   Icon: MessageSquare },
   ];
+  const logo = resolveLogoUrl(user?.institution_logo);
+  const isKwasu = !user?.institution_slug || user?.institution_slug === 'kwasu' || user?.institution_code === 'KWASU';
+  const instCode = user?.institution_code || 'KWASU';
+  const primaryColor = user?.institution_primary_color || '#22c55e';
+
   return (
     <aside style={s.sidebar}>
       <div style={s.sideHeader}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-          <img src="/kwasu.png" alt="KWASU" style={s.logoImg} />
+          {logo ? (
+            <img
+              src={logo}
+              alt={instCode}
+              style={s.logoImg}
+              onError={(e) => {
+                if (isKwasu) {
+                  e.target.src = '/kwasu.png';
+                } else {
+                  e.target.style.display = 'none';
+                  const fb = document.getElementById('student-sidebar-fallback');
+                  if (fb) fb.style.display = 'flex';
+                }
+              }}
+            />
+          ) : isKwasu ? (
+            <img src="/kwasu.png" alt="KWASU" style={s.logoImg} />
+          ) : null}
+          <div
+            id="student-sidebar-fallback"
+            style={{
+              display: (logo || isKwasu) ? 'none' : 'flex',
+              width: 38,
+              height: 38,
+              borderRadius: 8,
+              background: `${primaryColor}22`,
+              border: `1.5px solid ${primaryColor}55`,
+              color: primaryColor,
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 800,
+              fontSize: 13,
+              flexShrink: 0
+            }}
+          >
+            {instCode.slice(0, 3)}
+          </div>
           <div>
-            <div style={{ color: 'var(--text-primary, #ffffff)', fontWeight: 800, fontSize: 16, letterSpacing: '0.5px', lineHeight: 1.2 }}>KWASU</div>
-            <div style={{ color: '#22c55e', fontSize: 10, fontWeight: 700, letterSpacing: '1px' }}>SPSEMS</div>
+            <div style={{ color: 'var(--text-primary, #ffffff)', fontWeight: 800, fontSize: 16, letterSpacing: '0.5px', lineHeight: 1.2 }}>
+              {instCode}
+            </div>
+            <div style={{ color: primaryColor, fontSize: 10, fontWeight: 700, letterSpacing: '1px' }}>
+              SPSEMS
+            </div>
           </div>
         </div>
         <p style={s.sideRole}>{role?.toUpperCase() || 'STUDENT'}</p>
