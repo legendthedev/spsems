@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import ThemePromptModal from './components/ThemePromptModal';
+import PlatformLandingPage from './pages/PlatformLandingPage';
 import LandingPage        from './pages/LandingPage';
 import RegisterPage       from './pages/RegisterPage';
 import RegisterLecturerPage from './pages/RegisterLecturerPage';
@@ -27,8 +28,9 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/"                   element={user ? <Navigate to={`/${user.role}`} replace /> : <LandingPage />} />
+      <Route path="/"                   element={user ? <Navigate to={`/${user.role}`} replace /> : <PlatformLandingPage />} />
       <Route path="/login"              element={user ? <Navigate to={`/${user.role}`} replace /> : <LandingPage />} />
+      <Route path="/kwasu"              element={<LandingPage />} />
       <Route path="/onboard"            element={<InstitutionalOnboardingPage />} />
       <Route path="/onboarding"         element={<InstitutionalOnboardingPage />} />
       <Route path="/institutions/onboard" element={<InstitutionalOnboardingPage />} />

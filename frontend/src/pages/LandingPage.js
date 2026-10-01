@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
-import { Lock, User, LogIn, GraduationCap, Users, ShieldCheck, Building2 } from 'lucide-react';
+import { Lock, User, LogIn, GraduationCap, Users, ShieldCheck, ArrowLeft } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 
 export default function LandingPage() {
@@ -31,6 +31,14 @@ export default function LandingPage() {
         <ThemeToggle showLabel={true} />
       </div>
       <div style={s.card}>
+        <div style={s.navTopRow}>
+          <Link to="/" style={s.backLink}>
+            <ArrowLeft size={13} />
+            <span>All Institutions</span>
+          </Link>
+          <span style={s.nodeIndicator}>KWASU Node</span>
+        </div>
+
         <div style={s.header}>
           <img src="/kwasu.png" alt="Kwara State University" style={s.logoImg} />
           <div style={s.nodeBadge}>
@@ -99,19 +107,6 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Institutional Onboarding CTA */}
-        <div style={s.onboardBox}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Building2 size={16} color="#22c55e" />
-            <span style={s.onboardText}>
-              Are you an Academic Institution?
-            </span>
-          </div>
-          <Link to="/onboard" style={s.onboardLink}>
-            Onboard Your University &rarr;
-          </Link>
-        </div>
-
         <div style={s.demoBox}>
           <p style={s.demoTitle}>Demo Credentials</p>
           <div style={s.demoGrid}>
@@ -144,18 +139,34 @@ const s = {
     position: 'relative',
   },
   card: {
-    background: 'var(--auth-card-bg, rgba(15,15,15,0.97))', borderRadius: 16, padding: '40px 36px',
+    background: 'var(--auth-card-bg, rgba(15,15,15,0.97))', borderRadius: 16, padding: '32px 36px 36px',
     width: '100%', maxWidth: 440,
     boxShadow: 'var(--auth-card-shadow, 0 0 0 1px rgba(22,163,74,0.2), 0 24px 64px rgba(0,0,0,0.6))',
     backdropFilter: 'blur(12px)',
   },
-  header:  { textAlign: 'center', marginBottom: 28 },
-  logoImg: { height: 52, display: 'block', margin: '0 auto 10px' },
+  navTopRow: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    marginBottom: 20, paddingBottom: 12,
+    borderBottom: '1px solid var(--border-subtle, rgba(255,255,255,0.06))',
+  },
+  backLink: {
+    display: 'inline-flex', alignItems: 'center', gap: 6,
+    color: 'var(--text-muted, #9ca3af)', textDecoration: 'none',
+    fontSize: 12, fontWeight: 500,
+    transition: 'color 0.15s ease',
+  },
+  nodeIndicator: {
+    fontSize: 11, fontWeight: 600, color: '#22c55e',
+    background: 'rgba(22,163,74,0.12)', border: '1px solid rgba(22,163,74,0.25)',
+    padding: '2px 8px', borderRadius: 6,
+  },
+  header:  { textAlign: 'center', marginBottom: 24 },
+  logoImg: { height: 50, display: 'block', margin: '0 auto 10px' },
   nodeBadge: {
     display: 'inline-flex', alignItems: 'center', gap: 6,
     background: 'rgba(22,163,74,0.12)', border: '1px solid rgba(22,163,74,0.25)',
     color: '#22c55e', fontSize: 11, fontWeight: 600, padding: '3px 10px',
-    borderRadius: 999, marginBottom: 12,
+    borderRadius: 999, marginBottom: 10,
   },
   nodeDot: {
     width: 6, height: 6, borderRadius: '50%', background: '#22c55e',
@@ -163,7 +174,7 @@ const s = {
   },
   title:    { fontSize: 26, fontWeight: 800, color: 'var(--text-primary, #ffffff)', marginBottom: 6, letterSpacing: '-0.5px' },
   subtitle: { fontSize: 12, color: 'var(--text-dim, #6b7280)', lineHeight: 1.6 },
-  divider:  { width: 40, height: 2, background: '#16a34a', margin: '16px auto 0', borderRadius: 2 },
+  divider:  { width: 40, height: 2, background: '#16a34a', margin: '14px auto 0', borderRadius: 2 },
   form:     { display: 'flex', flexDirection: 'column', gap: 14 },
   fieldWrap: { display: 'flex', flexDirection: 'column', gap: 6 },
   label:    { fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #9ca3af)', letterSpacing: '0.3px' },
@@ -181,7 +192,7 @@ const s = {
     cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
     letterSpacing: '0.2px',
   },
-  registerSection: { marginTop: 22 },
+  registerSection: { marginTop: 20 },
   registerLabel:   { textAlign: 'center', fontSize: 11, color: 'var(--text-dim, #6b7280)', marginBottom: 10, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' },
   registerRow:     { display: 'flex', gap: 8, justifyContent: 'center' },
   regBtn: {
@@ -189,31 +200,8 @@ const s = {
     border: '1px solid rgba(22,163,74,0.25)', borderRadius: 7, fontWeight: 600,
     fontSize: 12, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5,
   },
-  onboardBox: {
-    marginTop: 18,
-    padding: '12px 14px',
-    background: 'rgba(22,163,74,0.08)',
-    border: '1px dashed rgba(22,163,74,0.35)',
-    borderRadius: 10,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  onboardText: {
-    fontSize: 11,
-    fontWeight: 600,
-    color: 'var(--text-primary, #ffffff)',
-  },
-  onboardLink: {
-    fontSize: 11,
-    fontWeight: 700,
-    color: '#22c55e',
-    textDecoration: 'none',
-    whiteSpace: 'nowrap',
-  },
   demoBox: {
-    marginTop: 18, background: 'var(--bg-card-subtle, rgba(255,255,255,0.03))', border: '1px solid var(--border-subtle, rgba(255,255,255,0.07))',
+    marginTop: 20, background: 'var(--bg-card-subtle, rgba(255,255,255,0.03))', border: '1px solid var(--border-subtle, rgba(255,255,255,0.07))',
     borderRadius: 10, padding: '14px 16px',
   },
   demoTitle: { fontWeight: 700, fontSize: 10, color: 'var(--text-dim, #6b7280)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.8px' },
