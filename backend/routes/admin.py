@@ -17,6 +17,16 @@ from pipeline.institutional_ml_pipeline import (
 )
 from pydantic import BaseModel
 from typing import Optional
+from pathlib import Path
+import sys
+
+try:
+    root_dir = Path(__file__).resolve().parent.parent.parent
+    if str(root_dir) not in sys.path:
+        sys.path.insert(0, str(root_dir))
+    from database.ms_access.access_sync_pipeline import MSAccessDatabasePipeline
+except Exception:
+    MSAccessDatabasePipeline = None
 
 class PipelineTriggerRequest(BaseModel):
     institution_code: Optional[str] = "KWASU"
@@ -589,3 +599,38 @@ def get_allocation_history(db: Session = Depends(get_db), user: dict = Depends(r
            ORDER BY ah.allocated_at DESC""")
     ).fetchall()
     return {"success": True, "history": [dict(r._mapping) for r in rows]}
+
+
+# ── Microsoft 365 Access Database Pipeline Routes ─────────────────────────────
+@router.get("/ms-access/status")
+def get_ms_access_status(user: dict = Depends(require_role("admin"))):
+    """Returns file metrics and table counts from Microsoft 365 Access database."""
+    if not MSAccessDatabasePipeline:
+        return {"available": False, "error": "MS Access Pipeline module not loaded"}
+    pipeline = MSAccessDatabasePipeline()
+    return pipeline.get_status()
+
+
+@router.post("/ms-access/sync")
+def trigger_ms_access_sync(user: dict = Depends(require_role("admin"))):
+    """Synchronizes live backend database state into Microsoft 365 Access."""
+    if not MSAccessDatabasePipeline:
+        raise HTTPException(500, "MS Access Pipeline module not available")
+    pipeline = MSAccessDatabasePipeline()
+    res = pipeline.sync_live_backend_to_access()
+    return res
+
+
+@router.post("/ms-access/launch")
+def launch_ms_access_application(user: dict = Depends(require_role("admin"))):
+    """Launches Microsoft 365 Access desktop application with the pipeline database."""
+    import subprocess
+    accdb = Path(__file__).resolve().parent.parent.parent / "database" / "ms_access" / "SPSEMS_Full_Database_Pipeline.accdb"
+    if not accdb.exists():
+        raise HTTPException(404, "MS Access database file does not exist. Run builder first.")
+    try:
+        subprocess.Popen(["cmd.exe", "/c", "start", "", str(accdb)], shell=True)
+        return {"success": True, "message": "Microsoft Access 365 opened successfully on desktop."}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
