@@ -12,8 +12,9 @@ from typing import List, Dict, Any, Optional
 import logging
 import os
 import time
+import numpy as np
 
-from ml_engine import get_xgb, get_rf, get_matcher, get_dup, compute_grade, MODEL_DIR
+from ml_engine import get_xgb, get_rf, get_matcher, get_dup, compute_grade, generate_training_data, MODEL_DIR
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -74,6 +75,14 @@ class GradeRequest(BaseModel):
     analysis_score:      float = Field(default=0, ge=0, le=20, validation_alias=AliasChoices("analysis_score", "rubric_analysis"))
     presentation_score:  float = Field(default=0, ge=0, le=20, validation_alias=AliasChoices("presentation_score", "rubric_presentation"))
     originality_score:   float = Field(default=0, ge=0, le=20, validation_alias=AliasChoices("originality_score", "rubric_originality"))
+
+
+class LiveDatasetTrainRequest(BaseModel):
+    institution_code: Optional[str] = "GLOBAL"
+    source:           Optional[str] = "live_database_etl"
+    features:         List[List[float]]
+    risk_labels:      List[int]
+    categories:       Optional[List[int]] = None
 
 
 # ─────────────────────────────────────────────
@@ -206,6 +215,58 @@ def retrain_model(model_name: str):
             return {"success": True, "model": "random_forest", "metrics": metrics}
     except Exception as e:
         logger.error(f"Retrain error ({model_name}): {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/pipeline/train-with-live-data")
+def train_with_live_data(body: LiveDatasetTrainRequest):
+    try:
+        X = np.array(body.features, dtype=np.float32)
+        y_risk = np.array(body.risk_labels, dtype=np.int32)
+
+        if len(X) < 3:
+            raise HTTPException(status_code=400, detail="At least 3 student project samples required from database.")
+
+        # If live cohort is smaller than 40, augment with distribution-matched samples so cross-validation stratification holds
+        if len(X) < 40:
+            synth_needed = max(40 - len(X), 30)
+            X_synth, y_synth = generate_training_data(synth_needed)
+            X_train = np.vstack([X, X_synth])
+            y_risk_train = np.concatenate([y_risk, y_synth])
+        else:
+            X_train = X
+            y_risk_train = y_risk
+
+        xgb_metrics = get_xgb().train(X=X_train, y=y_risk_train)
+
+        # Train Random Forest (3-class)
+        if body.categories and len(body.categories) == len(body.features):
+            y_rf_live = np.array(body.categories, dtype=np.int32)
+        else:
+            y_rf_live = np.where(y_risk == 1, 0, 1)
+
+        if len(X) < 40:
+            X_rf_synth, y_rf_synth = get_rf()._gen_3class(max(40 - len(X), 30))
+            X_rf_train = np.vstack([X, X_rf_synth])
+            y_rf_train = np.concatenate([y_rf_live, y_rf_synth])
+        else:
+            X_rf_train = X
+            y_rf_train = y_rf_live
+
+        rf_metrics = get_rf().train(X=X_rf_train, y=y_rf_train)
+
+        return {
+            "status": "success",
+            "institution_code": body.institution_code,
+            "source": body.source,
+            "live_samples_count": len(body.features),
+            "total_samples_trained": len(X_train),
+            "xgboost_metrics": xgb_metrics,
+            "random_forest_metrics": rf_metrics,
+            "trained_at": __import__("datetime").datetime.utcnow().isoformat(),
+        }
+    except Exception as e:
+        logger.error(f"Live data training pipeline failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

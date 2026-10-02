@@ -292,7 +292,7 @@ function StudentsTab({ students, reload }) {
                               style={{ ...s.smBtn, padding: '5px 10px' }}
                               onClick={() => handleDownload(sub)}
                               title="Download file">
-                              {isDlBusy ? '…' : '↓'}
+                              {isDlBusy ? <span style={{ fontSize: 11 }}>Loading…</span> : <Download size={13} />}
                             </button>
                           </div>
                         </div>

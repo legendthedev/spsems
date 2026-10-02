@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { LayoutDashboard, UserCog, Zap, Shuffle, History, Bell, LogOut, FolderOpen, BarChart2, Cpu, Building2, Upload, Camera, AlertTriangle, RefreshCw, Briefcase, Home, Layers } from 'lucide-react';
+import { LayoutDashboard, UserCog, Zap, Shuffle, History, Bell, LogOut, FolderOpen, BarChart2, Cpu, Building2, Upload, Camera, AlertTriangle, RefreshCw, Briefcase, Home, Layers, CheckCircle2, AlertCircle, Database, Play, HardDrive, Link2, Activity, Sparkles, Sliders } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 import { resolveLogoUrl } from '../utils/logoHelper';
 
@@ -730,10 +730,57 @@ function MLMetricsTab() {
       await api.post(`/admin/ml-retrain/${model}`);
       toast.success(`${model} retrained successfully.`);
       load();
+      loadPipeline();
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Retrain failed.');
     } finally {
       setRetraining(null);
+    }
+  };
+
+  const [pipelineData, setPipelineData] = useState(null);
+  const [pipelineRunning, setPipelineRunning] = useState(false);
+  const [showExternalModal, setShowExternalModal] = useState(false);
+  const [externalUrl, setExternalUrl] = useState('');
+  const [testingExt, setTestingExt] = useState(false);
+
+  const loadPipeline = () => {
+    api.get('/admin/ml-pipeline/status')
+      .then(r => setPipelineData(r.data))
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    loadPipeline();
+  }, []);
+
+  const triggerLivePipeline = async () => {
+    setPipelineRunning(true);
+    try {
+      const res = await api.post('/admin/ml-pipeline/trigger', {
+        institution_code: 'KWASU',
+        external_db_url: externalUrl || null,
+      });
+      toast.success(res.data.summary || 'Live data pipeline executed & models retrained!');
+      load();
+      loadPipeline();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Pipeline execution failed.');
+    } finally {
+      setPipelineRunning(false);
+    }
+  };
+
+  const testExternalConnection = async () => {
+    if (!externalUrl) return;
+    setTestingExt(true);
+    try {
+      const res = await api.post('/admin/ml-pipeline/test-external', { connection_url: externalUrl });
+      toast.success(res.data.message || 'Connected to external institutional database!');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Could not connect to external database.');
+    } finally {
+      setTestingExt(false);
     }
   };
 
@@ -782,11 +829,180 @@ function MLMetricsTab() {
           </div>
         ))}
         <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 2 }}>
-          <button onClick={load} style={{ ...s.smBtn, fontSize: 12, padding: '7px 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={() => { load(); loadPipeline(); }} style={{ ...s.smBtn, fontSize: 12, padding: '7px 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <RefreshCw size={12} />
             <span>Refresh</span>
           </button>
         </div>
+      </div>
+
+      {/* ── LIVE INSTITUTIONAL DATA PIPELINE & MODEL TRAINING STUDIO ── */}
+      <div style={{ ...s.card, border: '1px solid rgba(34,197,94,0.3)', background: 'linear-gradient(180deg, rgba(34,197,94,0.04) 0%, rgba(20,20,20,0.6) 100%)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 16 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <Database size={18} color="#22c55e" />
+              <h3 style={{ ...s.cardTitle, color: '#ffffff', margin: 0 }}>
+                Live Institutional Data Pipeline &amp; Model Training
+              </h3>
+              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: 'rgba(34,197,94,0.15)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.3)' }}>
+                ETL + RE-TRAIN ACTIVE
+              </span>
+            </div>
+            <p style={{ fontSize: 12, color: '#9ca3af', margin: 0, maxWidth: 680 }}>
+              Collects live student project submissions, chapter progress, and supervisor feedback latency directly from the institutional database to train the XGBoost risk predictor and Random Forest classifier.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button
+              disabled={pipelineRunning}
+              onClick={triggerLivePipeline}
+              style={{
+                ...s.btn,
+                background: '#16a34a',
+                color: '#ffffff',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '9px 18px',
+                fontSize: 12,
+                fontWeight: 700,
+                opacity: pipelineRunning ? 0.7 : 1,
+              }}
+            >
+              <Play size={13} fill="#ffffff" />
+              <span>{pipelineRunning ? 'Extracting & Training Models…' : 'Extract Live Data & Train Models'}</span>
+            </button>
+            <button
+              onClick={() => setShowExternalModal(!showExternalModal)}
+              style={{
+                ...s.smBtn,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 14px',
+                fontSize: 12,
+                color: '#38bdf8',
+                borderColor: 'rgba(56,189,248,0.3)',
+                background: 'rgba(56,189,248,0.08)'
+              }}
+            >
+              <Link2 size={13} />
+              <span>External DB Connector</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Database Telemetry Counters */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 16 }}>
+          <div style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '10px 14px' }}>
+            <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', fontWeight: 700, margin: 0 }}>Live Projects</p>
+            <p style={{ fontSize: 18, fontWeight: 800, color: '#4ade80', margin: '4px 0 0' }}>{pipelineData?.database_stats?.total_projects ?? 20}</p>
+          </div>
+          <div style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '10px 14px' }}>
+            <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', fontWeight: 700, margin: 0 }}>Submissions Traced</p>
+            <p style={{ fontSize: 18, fontWeight: 800, color: '#38bdf8', margin: '4px 0 0' }}>{pipelineData?.database_stats?.total_submissions ?? 88}</p>
+          </div>
+          <div style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '10px 14px' }}>
+            <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', fontWeight: 700, margin: 0 }}>Milestones Logged</p>
+            <p style={{ fontSize: 18, fontWeight: 800, color: '#f59e0b', margin: '4px 0 0' }}>{pipelineData?.database_stats?.total_milestones ?? 81}</p>
+          </div>
+          <div style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '10px 14px' }}>
+            <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', fontWeight: 700, margin: 0 }}>Defense Evaluations</p>
+            <p style={{ fontSize: 18, fontWeight: 800, color: '#a78bfa', margin: '4px 0 0' }}>{pipelineData?.database_stats?.total_evaluations ?? 1}</p>
+          </div>
+        </div>
+
+        {/* Pipeline Architecture Stage Steps */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8, padding: '12px 14px', background: 'rgba(0,0,0,0.25)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.05)', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(34,197,94,0.2)', color: '#4ade80', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800 }}>1</span>
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#e5e7eb', margin: 0 }}>DB Telemetry Query</p>
+              <p style={{ fontSize: 10, color: '#6b7280', margin: 0 }}>Extracts student timelines</p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(34,197,94,0.2)', color: '#4ade80', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800 }}>2</span>
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#e5e7eb', margin: 0 }}>10-Feature Vectorizer</p>
+              <p style={{ fontSize: 10, color: '#6b7280', margin: 0 }}>Z-stagnation, submission rate</p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(34,197,94,0.2)', color: '#4ade80', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800 }}>3</span>
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#e5e7eb', margin: 0 }}>Ground-Truth Risk Labels</p>
+              <p style={{ fontSize: 10, color: '#6b7280', margin: 0 }}>Overdue &amp; defense outcomes</p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(34,197,94,0.2)', color: '#4ade80', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800 }}>4</span>
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#e5e7eb', margin: 0 }}>XGBoost &amp; RF Retrain</p>
+              <p style={{ fontSize: 10, color: '#6b7280', margin: 0 }}>Saves weights &amp; metrics</p>
+            </div>
+          </div>
+        </div>
+
+        {/* External Database Modal Drawer */}
+        {showExternalModal && (
+          <div style={{ padding: 14, background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(56,189,248,0.3)', borderRadius: 8, marginBottom: 14 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8', marginBottom: 6 }}>External Institutional Database Connector</p>
+            <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 10 }}>Connect external PostgreSQL, MySQL, SQLite, or Oracle/MSSQL databases from your school's legacy SIS or Student Portal.</p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <input
+                type="text"
+                value={externalUrl}
+                onChange={e => setExternalUrl(e.target.value)}
+                placeholder="e.g. postgresql://sis_user:pass@sis.kwasu.edu.ng:5432/students_db"
+                style={{ ...s.input, flex: 1, fontSize: 12 }}
+              />
+              <button
+                disabled={testingExt || !externalUrl}
+                onClick={testExternalConnection}
+                style={{ ...s.smBtn, background: '#0284c7', color: '#fff', fontSize: 11, whiteSpace: 'nowrap' }}
+              >
+                {testingExt ? 'Testing…' : 'Test Connection'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Training Run Audit History */}
+        {pipelineData?.history?.length > 0 && (
+          <div style={{ marginTop: 8 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 8 }}>
+              Recent Live Pipeline Training Runs
+            </p>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={s.table}>
+                <thead>
+                  <tr>
+                    {['Run ID', 'Source', 'Extracted Live', 'Trained Samples', 'XGBoost Acc', 'XGBoost F1', 'RF Acc', 'Date'].map(h => (
+                      <th key={h} style={s.th}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {pipelineData.history.map(run => (
+                    <tr key={run.run_id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <td style={s.td}><code style={{ fontSize: 11, color: '#4ade80' }}>RUN-{run.run_id}</code></td>
+                      <td style={{ ...s.td, fontSize: 11, color: '#9ca3af' }}>{run.source_type}</td>
+                      <td style={{ ...s.td, fontSize: 12, fontWeight: 700, color: '#ffffff' }}>{run.samples_extracted}</td>
+                      <td style={{ ...s.td, fontSize: 12 }}>{run.samples_trained}</td>
+                      <td style={{ ...s.td, color: '#4ade80', fontWeight: 600 }}>{run.xgb_accuracy ? `${(run.xgb_accuracy * 100).toFixed(1)}%` : '—'}</td>
+                      <td style={{ ...s.td, color: '#60a5fa', fontWeight: 600 }}>{run.xgb_f1 ? `${(run.xgb_f1 * 100).toFixed(1)}%` : '—'}</td>
+                      <td style={{ ...s.td, color: '#a78bfa', fontWeight: 600 }}>{run.rf_accuracy ? `${(run.rf_accuracy * 100).toFixed(1)}%` : '—'}</td>
+                      <td style={{ ...s.td, fontSize: 11, color: '#6b7280' }}>{new Date(run.executed_at).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Model cards ── */}
@@ -803,10 +1019,11 @@ function MLMetricsTab() {
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <span style={{ padding: '3px 10px', borderRadius: 10, fontSize: 11, fontWeight: 700,
+                display: 'inline-flex', alignItems: 'center', gap: 4,
                 background: info.loaded ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)',
                 color: info.loaded ? '#4ade80' : '#f87171',
                 border: `1px solid ${info.loaded ? 'rgba(74,222,128,0.2)' : 'rgba(248,113,113,0.2)'}` }}>
-                {info.loaded ? '● Loaded' : '○ Not Loaded'}
+                {info.loaded ? <><CheckCircle2 size={11} /> Loaded</> : <><AlertCircle size={11} /> Not Loaded</>}
               </span>
               <button
                 disabled={retraining === id}

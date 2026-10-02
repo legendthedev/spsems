@@ -1,1 +1,1 @@
-{"accuracy": 1.0, "oob_score": 1.0, "train_samples": 720, "test_samples": 180, "n_features": 10, "trained_at": "2026-06-21T15:01:52.336564"}
+{"accuracy": 1.0, "oob_score": 0.875, "train_samples": 40, "test_samples": 10, "n_features": 10, "trained_at": "2026-10-02T20:17:34.344797"}

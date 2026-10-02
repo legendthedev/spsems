@@ -10,6 +10,20 @@ from database import get_db
 from middleware.auth import require_role
 from schemas.schemas import ManualAllocateRequest
 from config import get_settings
+from pipeline.institutional_ml_pipeline import (
+    InstitutionalMLPipeline,
+    ExternalDatabaseConnector,
+    InstitutionalDataExtractor,
+)
+from pydantic import BaseModel
+from typing import Optional
+
+class PipelineTriggerRequest(BaseModel):
+    institution_code: Optional[str] = "KWASU"
+    external_db_url: Optional[str] = None
+
+class ExternalDbTestRequest(BaseModel):
+    connection_url: str
 
 router   = APIRouter(prefix="/admin", tags=["Admin"])
 settings = get_settings()
@@ -326,6 +340,74 @@ def retrain_ml_model(model_name: str, user: dict = Depends(require_role("admin")
         raise HTTPException(503, "ML service is offline.")
     except Exception as e:
         raise HTTPException(503, f"Retrain failed: {str(e)}")
+
+
+@router.get("/ml-pipeline/status")
+def get_ml_pipeline_status(db: Session = Depends(get_db), user: dict = Depends(require_role("admin"))):
+    """Returns database telemetry and ML pipeline status & history."""
+    try:
+        def scalar(q):
+            row = db.execute(text(q)).fetchone()
+            return row[0] if (row and row[0] is not None) else 0
+
+        total_projects = scalar("SELECT COUNT(*) FROM projects")
+        total_milestones = scalar("SELECT COUNT(*) FROM milestones")
+        total_submissions = scalar("SELECT COUNT(*) FROM submissions")
+        total_evaluations = scalar("SELECT COUNT(*) FROM evaluations")
+        history = InstitutionalMLPipeline.get_pipeline_history(db, limit=8)
+
+        latest_run = history[0] if history else None
+
+        return {
+            "status": "ready",
+            "database_stats": {
+                "total_projects": total_projects,
+                "total_milestones": total_milestones,
+                "total_submissions": total_submissions,
+                "total_evaluations": total_evaluations,
+            },
+            "latest_run": latest_run,
+            "history": history,
+        }
+    except Exception as e:
+        raise HTTPException(500, f"Failed to retrieve pipeline status: {str(e)}")
+
+
+@router.post("/ml-pipeline/trigger")
+def trigger_ml_pipeline(
+    body: PipelineTriggerRequest = PipelineTriggerRequest(),
+    db: Session = Depends(get_db),
+    user: dict = Depends(require_role("admin")),
+):
+    """
+    Triggers the live institutional data extraction, feature generation,
+    and model retraining pipeline for XGBoost & Random Forest models.
+    """
+    try:
+        result = InstitutionalMLPipeline.run_pipeline(
+            db=db,
+            institution_code=body.institution_code or user.get("institution_code", "KWASU"),
+            external_db_url=body.external_db_url,
+        )
+        return result
+    except ValueError as ve:
+        raise HTTPException(400, str(ve))
+    except RuntimeError as re:
+        raise HTTPException(503, str(re))
+    except Exception as e:
+        raise HTTPException(500, f"Pipeline execution failed: {str(e)}")
+
+
+@router.post("/ml-pipeline/test-external")
+def test_external_db_connection(
+    body: ExternalDbTestRequest,
+    user: dict = Depends(require_role("admin")),
+):
+    """Tests connectivity to an external institution database."""
+    res = ExternalDatabaseConnector.test_connection(body.connection_url)
+    if not res.get("connected"):
+        raise HTTPException(400, res.get("error", "Could not connect to external database."))
+    return res
 
 
 @router.get("/metrics")
