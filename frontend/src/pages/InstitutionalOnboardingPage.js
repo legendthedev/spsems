@@ -1292,7 +1292,7 @@ export default function InstitutionalOnboardingPage() {
               <div style={s.successActionRow}>
                 <button
                   type="button"
-                  onClick={() => navigate(`/login/${onboardResult.subdomain_slug}?token=${encodeURIComponent(onboardResult.verification_token || '')}`)}
+                  onClick={() => navigate(`/login/${onboardResult.subdomain_slug}?token=${encodeURIComponent(onboardResult.verification_token || '')}&anim=1`)}
                   style={{ ...s.btnPrimary, background: form.primary_color }}
                 >
                   <span>Launch {onboardResult.institution_code} SPSEMS Login</span>
