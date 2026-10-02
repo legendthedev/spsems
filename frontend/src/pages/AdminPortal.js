@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { LayoutDashboard, UserCog, Zap, Shuffle, History, Bell, LogOut, FolderOpen, BarChart2, Cpu, Building2, Upload, Camera, AlertTriangle, RefreshCw } from 'lucide-react';
+import { LayoutDashboard, UserCog, Zap, Shuffle, History, Bell, LogOut, FolderOpen, BarChart2, Cpu, Building2, Upload, Camera, AlertTriangle, RefreshCw, Briefcase, Home, Layers } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 import { resolveLogoUrl } from '../utils/logoHelper';
 
@@ -1315,6 +1315,34 @@ function Sidebar({ role, active, onTab, onLogout, unread, user }) {
           </button>
         ))}
       </nav>
+      <div style={{ padding: '8px 12px 10px', borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: 8 }}>
+        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.6px', color: '#6b7280', textTransform: 'uppercase', marginBottom: 6 }}>
+          Campus Portals
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <a
+            href={`/portal/${user?.institution_slug || 'kwapoly'}/siwes`}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#9ca3af', textDecoration: 'none', padding: '4px 6px', borderRadius: 4, transition: 'color 0.2s' }}
+          >
+            <Briefcase size={12} color="#3b82f6" />
+            <span>SIWES Portal</span>
+          </a>
+          <a
+            href={`/portal/${user?.institution_slug || 'kwapoly'}/hostel`}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#9ca3af', textDecoration: 'none', padding: '4px 6px', borderRadius: 4, transition: 'color 0.2s' }}
+          >
+            <Home size={12} color="#f59e0b" />
+            <span>Hostel Portal</span>
+          </a>
+          <a
+            href={`/login/${user?.institution_slug || 'kwapoly'}`}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#9ca3af', textDecoration: 'none', padding: '4px 6px', borderRadius: 4, transition: 'color 0.2s' }}
+          >
+            <Layers size={12} color={primaryColor} />
+            <span>Portals Gateway</span>
+          </a>
+        </div>
+      </div>
       <div style={{ padding: '0 12px 4px' }}>
         <button style={s.logoutBtn} onClick={onLogout}>
           <LogOut size={14} />

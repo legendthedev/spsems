@@ -13,6 +13,8 @@ import InstitutionalOnboardingPage from './pages/InstitutionalOnboardingPage';
 import StudentPortal      from './pages/StudentPortal';
 import SupervisorPortal   from './pages/SupervisorPortal';
 import AdminPortal        from './pages/AdminPortal';
+import SiwesPortal        from './pages/SiwesPortal';
+import HostelPortal       from './pages/HostelPortal';
 
 function PrivateRoute({ children, role }) {
   const { user, loading } = useAuth();
@@ -29,9 +31,15 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/"                   element={user ? <Navigate to={`/${user.role}`} replace /> : <PlatformLandingPage />} />
-      <Route path="/login"              element={user ? <Navigate to={`/${user.role}`} replace /> : <LandingPage />} />
-      <Route path="/login/:slug"        element={user ? <Navigate to={`/${user.role}`} replace /> : <LandingPage />} />
-      <Route path="/portal/:slug"       element={user ? <Navigate to={`/${user.role}`} replace /> : <LandingPage />} />
+      <Route path="/login"              element={<LandingPage />} />
+      <Route path="/login/:slug"        element={<LandingPage />} />
+      <Route path="/login/:slug/:portalId" element={<LandingPage />} />
+      <Route path="/portal/:slug/siwes" element={<SiwesPortal />} />
+      <Route path="/siwes"              element={<SiwesPortal />} />
+      <Route path="/portal/:slug/hostel" element={<HostelPortal />} />
+      <Route path="/hostel"             element={<HostelPortal />} />
+      <Route path="/portal/:slug/spsems" element={user ? <Navigate to={`/${user.role}`} replace /> : <LandingPage />} />
+      <Route path="/portal/:slug"       element={<LandingPage />} />
       <Route path="/kwasu"              element={<LandingPage />} />
       <Route path="/onboard"            element={<InstitutionalOnboardingPage />} />
       <Route path="/onboarding"         element={<InstitutionalOnboardingPage />} />

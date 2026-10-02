@@ -6,39 +6,87 @@ import toast from 'react-hot-toast';
 import {
   Lock, User, LogIn, GraduationCap, Users, ShieldCheck, ArrowLeft,
   ChevronDown, School, KeyRound, Lightbulb, CheckCircle2, ShieldAlert,
-  Eye, EyeOff, Globe, Sparkles, ExternalLink, HelpCircle, Layers, Info, X, Mail
+  Eye, EyeOff, Globe, Sparkles, ExternalLink, HelpCircle, Layers, Info, X, Mail,
+  Briefcase, Home, Check
 } from 'lucide-react';
 import api from '../services/api';
 import ThemeToggle from '../components/ThemeToggle';
 import { resolveLogoUrl } from '../utils/logoHelper';
 
+// Definition of the 3 official institutional portals
+export const INSTITUTIONAL_PORTALS = {
+  spsems: {
+    id: 'spsems',
+    gatewayCode: 'SPSEMS-01',
+    title: 'SPSEMS Portal',
+    badgeName: 'SPSEMS Project Supervision',
+    subtitle: 'Project Supervision & Evaluation Management',
+    description: 'Central postgraduate & undergraduate dissertation, thesis, and project supervision ecosystem with AI evaluation.',
+    icon: Layers,
+    targetRoute: '/spsems',
+  },
+  siwes: {
+    id: 'siwes',
+    gatewayCode: 'SIWES-02',
+    title: 'SIWES / IT Placement Portal',
+    badgeName: 'SIWES & Industrial Training',
+    subtitle: 'Industrial Training & Student Work Experience',
+    description: 'Students Industrial Work Experience Scheme (SIWES), E-Logbook submission, and industry supervisor assessment portal.',
+    icon: Briefcase,
+    targetRoute: '/siwes',
+  },
+  hostel: {
+    id: 'hostel',
+    gatewayCode: 'HOSTEL-03',
+    title: 'Hostel Allocation Portal',
+    badgeName: 'Hostel & Bedspace Allocation',
+    subtitle: 'Campus Residence & Bedspace Balloting',
+    description: 'Campus residence hall selection, room balloting, bedspace reservation pass, and hall warden clearance.',
+    icon: Home,
+    targetRoute: '/hostel',
+  },
+};
+
 export default function LandingPage() {
-  const { login } = useAuth();
+  const { user, login } = useAuth();
   const navigate = useNavigate();
-  const { slug: routeSlug } = useParams();
+  const { slug: routeSlug, portalId: routePortalId } = useParams();
   const location = useLocation();
 
   const querySlug = new URLSearchParams(location.search).get('institution') ||
                     new URLSearchParams(location.search).get('school');
   const tokenQuery = new URLSearchParams(location.search).get('token') || '';
-  const animQuery = new URLSearchParams(location.search).get('anim') ||
-                    new URLSearchParams(location.search).get('loading') || '';
-  const targetSlug = (routeSlug || querySlug || 'kwasu').toLowerCase();
+  const queryPortalId = new URLSearchParams(location.search).get('portal') || '';
+  const targetSlug = (routeSlug || querySlug || 'kwapoly').toLowerCase();
+
+  // Active portal selection: from URL param or query param or defaults to 'spsems'
+  const initialPortal = (routePortalId || queryPortalId || 'spsems').toLowerCase();
+  const isDedicatedPortalRoute = Boolean(routePortalId && INSTITUTIONAL_PORTALS[routePortalId.toLowerCase()]);
+  const [activePortalId, setActivePortalId] = useState(
+    INSTITUTIONAL_PORTALS[initialPortal] ? initialPortal : 'spsems'
+  );
+
+  // Sync activePortalId if routePortalId changes
+  useEffect(() => {
+    if (routePortalId && INSTITUTIONAL_PORTALS[routePortalId.toLowerCase()]) {
+      setActivePortalId(routePortalId.toLowerCase());
+    }
+  }, [routePortalId]);
 
   // Loading animation state (Image 1)
   const [loadingAnimation, setLoadingAnimation] = useState(true);
 
   // Institution Branding State
   const [institution, setInstitution] = useState({
-    name: targetSlug === 'kwasu' ? 'Kwara State University' : 'Institution Portal',
-    code: targetSlug === 'kwasu' ? 'KWASU' : targetSlug.toUpperCase(),
+    name: targetSlug === 'kwasu' ? 'Kwara State University' : (targetSlug === 'kwapoly' ? 'Kwara State Polytechnic' : 'Institution Portal'),
+    code: targetSlug.toUpperCase(),
     slug: targetSlug,
-    location: targetSlug === 'kwasu' ? 'Malete' : '',
+    location: targetSlug === 'kwasu' ? 'Malete' : (targetSlug === 'kwapoly' ? 'Ilorin' : ''),
     logo_url: targetSlug === 'kwasu' ? '/kwasu.png' : '',
     primary_color: '#237e3d',
     secondary_color: '#080808',
     domain: '',
-    contact_email: targetSlug === 'kwasu' ? 'ict@kwasu.edu.ng' : '',
+    contact_email: '',
     session: '2025/2026',
     semester: 'First Semester',
     status: 'active',
@@ -50,12 +98,11 @@ export default function LandingPage() {
   const [showLangPicker, setShowLangPicker] = useState(false);
   const [selectedLang, setSelectedLang] = useState('En');
   const [showPassword, setShowPassword] = useState(false);
-  const [portalModal, setPortalModal] = useState(null);
   const [forgotModal, setForgotModal] = useState(false);
   const [showDemoAccounts, setShowDemoAccounts] = useState(false);
 
   const [form, setForm] = useState({
-    username: targetSlug === 'kwasu' ? 'ict@kwasu.edu.ng' : '',
+    username: '',
     password: '',
     verification_token: tokenQuery,
   });
@@ -66,9 +113,9 @@ export default function LandingPage() {
     setLoadingAnimation(true);
     const timer = setTimeout(() => {
       setLoadingAnimation(false);
-    }, 2200);
+    }, 2000);
     return () => clearTimeout(timer);
-  }, [targetSlug]);
+  }, [targetSlug, routePortalId]);
 
   // Fetch institution data whenever slug changes
   useEffect(() => {
@@ -81,9 +128,9 @@ export default function LandingPage() {
             name: instData.name,
             code: instData.code,
             slug: instData.slug,
-            location: instData.location || (instData.slug === 'kwasu' ? 'Malete' : ''),
+            location: instData.location || (instData.slug === 'kwasu' ? 'Malete' : (instData.slug === 'kwapoly' ? 'Ilorin' : '')),
             logo_url: instData.logo_url || (targetSlug === 'kwasu' ? '/kwasu.png' : ''),
-            primary_color: instData.primary_color || (targetSlug === 'kwasu' ? '#237e3d' : '#16a34a'),
+            primary_color: instData.primary_color || '#237e3d',
             secondary_color: instData.secondary_color || '#080808',
             domain: instData.domain,
             contact_email: instData.contact_email,
@@ -98,13 +145,13 @@ export default function LandingPage() {
           if (instData.contact_email) {
             setForm(prev => ({
               ...prev,
-              username: prev.username && prev.username !== 'ict@kwasu.edu.ng' ? prev.username : instData.contact_email,
+              username: prev.username ? prev.username : instData.contact_email,
               verification_token: prev.verification_token || tokenQuery || '',
             }));
           }
         }
       } catch (err) {
-        console.warn(`Could not load institution for slug '${targetSlug}', default to KWASU.`);
+        console.warn(`Could not load institution for slug '${targetSlug}'.`);
       }
     }
     loadInstitution();
@@ -125,18 +172,29 @@ export default function LandingPage() {
     fetchDirectory();
   }, []);
 
+  const currentPortalConfig = INSTITUTIONAL_PORTALS[activePortalId] || INSTITUTIONAL_PORTALS.spsems;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setBusy(true);
     try {
-      const user = await login(
+      const loggedUser = await login(
         form.username,
         form.password,
         form.verification_token || null,
         institution.slug
       );
-      toast.success(`Welcome back, ${user.full_name}`);
-      navigate(`/${user.role}`);
+      toast.success(`Authenticated for ${currentPortalConfig.title}! Welcome, ${loggedUser.full_name}`);
+
+      // Route directly through the gateway to the specific portal chosen!
+      if (activePortalId === 'siwes') {
+        navigate(`/portal/${institution.slug}/siwes`);
+      } else if (activePortalId === 'hostel') {
+        navigate(`/portal/${institution.slug}/hostel`);
+      } else {
+        // SPSEMS Project Supervision Portal (Role-based: student, supervisor, admin)
+        navigate(`/${loggedUser.role}`);
+      }
     } catch (err) {
       toast.error(
         err.response?.data?.detail ||
@@ -148,61 +206,12 @@ export default function LandingPage() {
     }
   };
 
-  const primaryColor = institution.primary_color || (targetSlug === 'kwasu' ? '#237e3d' : '#16a34a');
+  const primaryColor = institution.primary_color || '#237e3d';
   const isKwasu = institution.slug === 'kwasu' || institution.code === 'KWASU';
 
   const fullSchoolNameWithLocation = isKwasu
     ? 'Kwara State University, Malete'
     : `${institution.name}${institution.location ? `, ${institution.location.split(',')[0]}` : ''}`;
-
-  // Multi-portal ecosystem cards (matching Image 2 bottom row, and preparing for future portal integrations)
-  const portalCards = [
-    {
-      id: 'spsems',
-      title: 'SPSEMS Portal',
-      subtitle: 'Project Supervision & Evaluation Management',
-      tag: 'Core System',
-      isCurrent: true,
-      actionText: 'Enter >',
-      onClick: () => {
-        const input = document.getElementById('staffStudentInput');
-        if (input) input.focus();
-        toast.success(`Active Portal: ${institution.code} SPSEMS`);
-      }
-    },
-    {
-      id: 'post_utme',
-      title: 'Post-UTME Registration',
-      subtitle: isKwasu ? 'Post-UTME Verification and Enr...' : 'Admissions & Screening Portal',
-      tag: 'Portal Node 2',
-      isCurrent: false,
-      actionText: 'Enter >',
-      onClick: () => {
-        setPortalModal({
-          title: 'Post-UTME Registration Portal',
-          subtitle: 'Undergraduate Admissions, Screening & Enrolment',
-          phase: 'Phase 2 Architecture',
-          description: `The Post-UTME and Candidate Clearance module for ${institution.name} will be directly integrated with the central SPSEMS Single Sign-On (SSO) in the subsequent phase. You can currently authenticate above into the SPSEMS research & supervision portal.`
-        });
-      }
-    },
-    {
-      id: 'cails',
-      title: 'CAILS Application',
-      subtitle: isKwasu ? 'CAILS-KWASU Sandwich' : 'Continuing Studies & Sandwich Portal',
-      tag: 'Portal Node 3',
-      isCurrent: false,
-      actionText: 'Enter >',
-      onClick: () => {
-        setPortalModal({
-          title: 'CAILS Application & Sandwich Portal',
-          subtitle: 'Centre for Advanced Studies & Professional Degrees',
-          phase: 'Phase 3 Architecture',
-          description: `The CAILS Application, Sandwich, and Continuing Education module for ${institution.name} will be linked as Portal Node 3 under this unified institutional instance. SPSEMS project tracking remains active for all degree tracks.`
-        });
-      }
-    }
-  ];
 
   return (
     <div style={s.pageWrapper}>
@@ -221,12 +230,15 @@ export default function LandingPage() {
           to { opacity: 1; transform: translateY(0); }
         }
         .portal-card-btn:hover {
-          filter: brightness(1.1);
+          filter: brightness(1.12);
           transform: translateY(-1px);
         }
         .login-btn:hover {
           filter: brightness(1.08);
           box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+        }
+        .portal-selector-tab:hover {
+          background-color: rgba(35,126,61,0.08);
         }
       `}</style>
 
@@ -289,15 +301,17 @@ export default function LandingPage() {
                     onError={(e) => { e.target.style.display = 'none'; }}
                   />
                 ) : (
-                  <School size={120} color="rgba(255,255,255,0.15)" />
+                  <School size={130} color="rgba(255,255,255,0.18)" />
                 )}
               </div>
 
               <div style={s.bannerFooter}>
-                <div style={s.bannerBadge}>CAMPUS INSTANCE • ACTIVE</div>
+                <div style={s.bannerBadge}>
+                  {isDedicatedPortalRoute ? `GATEWAY: ${currentPortalConfig.gatewayCode}` : 'CAMPUS INSTANCE • ACTIVE'}
+                </div>
                 <h3 style={s.bannerSchoolTitle}>{institution.name}</h3>
                 <p style={s.bannerMotto}>
-                  {isKwasu ? 'Skills & Integrity • University of World-Class Excellence' : 'Unified Academic Management Ecosystem'}
+                  {currentPortalConfig.subtitle}
                 </p>
               </div>
             </div>
@@ -308,10 +322,17 @@ export default function LandingPage() {
             {/* Top Toolbar: Language Switcher, Theme Toggle, Institution Switcher */}
             <div style={s.topToolbar}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Link to="/" style={s.networkHubBtn} title="All Institutions Directory">
-                  <ArrowLeft size={13} />
-                  <span>Network Hub</span>
-                </Link>
+                {isDedicatedPortalRoute ? (
+                  <Link to={`/login/${institution.slug}`} style={s.networkHubBtn} title="Back to All Portals Gateway">
+                    <ArrowLeft size={13} />
+                    <span>All Portals Gateway</span>
+                  </Link>
+                ) : (
+                  <Link to="/" style={s.networkHubBtn} title="All Institutions Directory">
+                    <ArrowLeft size={13} />
+                    <span>Network Hub</span>
+                  </Link>
+                )}
 
                 {/* Institution Switcher Dropdown */}
                 <div style={{ position: 'relative' }}>
@@ -334,7 +355,7 @@ export default function LandingPage() {
                       {allInstitutions.map((sch) => (
                         <Link
                           key={sch.id}
-                          to={`/login/${sch.slug}`}
+                          to={`/login/${sch.slug}${isDedicatedPortalRoute ? `/${activePortalId}` : ''}`}
                           onClick={() => setShowSchoolPicker(false)}
                           style={{
                             ...s.dropdownItem,
@@ -459,6 +480,55 @@ export default function LandingPage() {
                 {fullSchoolNameWithLocation}
               </h2>
 
+              {/* Dedicated Gateway Header Banner (if a specific portal is selected) */}
+              <div style={{ ...s.gatewayIndicatorCard, borderColor: `${primaryColor}40`, backgroundColor: `${primaryColor}0a` }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                    {React.createElement(currentPortalConfig.icon || Layers, { size: 16, color: primaryColor })}
+                    <span style={{ fontSize: 12, fontWeight: 800, color: primaryColor, letterSpacing: '0.4px' }}>
+                      {currentPortalConfig.title.toUpperCase()}
+                    </span>
+                  </div>
+                  <span style={{ ...s.gatewayCodeBadge, color: primaryColor, backgroundColor: `${primaryColor}18` }}>
+                    {currentPortalConfig.gatewayCode}
+                  </span>
+                </div>
+                <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-muted, #6b7280)', lineHeight: 1.3 }}>
+                  {currentPortalConfig.description}
+                </p>
+              </div>
+
+              {/* Destination Portal Gateway Tabs */}
+              <div style={s.portalTabsRow}>
+                {Object.values(INSTITUTIONAL_PORTALS).map(p => {
+                  const isSelected = activePortalId === p.id;
+                  const Icon = p.icon;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        setActivePortalId(p.id);
+                        if (isDedicatedPortalRoute) {
+                          navigate(`/login/${institution.slug}/${p.id}`);
+                        }
+                      }}
+                      className="portal-selector-tab"
+                      style={{
+                        ...s.portalSelectorTab,
+                        backgroundColor: isSelected ? primaryColor : 'var(--bg-card, #ffffff)',
+                        color: isSelected ? '#ffffff' : 'var(--text-primary, #374151)',
+                        borderColor: isSelected ? primaryColor : 'var(--border-subtle, #d1d5db)',
+                        fontWeight: isSelected ? 700 : 500,
+                      }}
+                    >
+                      <Icon size={13} color={isSelected ? '#fff' : primaryColor} />
+                      <span>{p.id.toUpperCase()}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
               {/* Login Form matching Image 2 */}
               <form onSubmit={handleSubmit} style={s.loginForm}>
                 {/* Staff/Student ID Input */}
@@ -550,40 +620,66 @@ export default function LandingPage() {
                     opacity: busy ? 0.7 : 1,
                   }}
                 >
-                  {busy ? 'AUTHENTICATING...' : 'LOGIN'}
+                  {busy ? 'CONNECTING GATEWAY...' : `LOGIN TO ${currentPortalConfig.id.toUpperCase()} PORTAL`}
                 </button>
               </form>
 
-              {/* ── BOTTOM PORTAL CARDS (MATCHING IMAGE 2 FORMAT) ──────────── */}
+              {/* ── 3 UNIQUE PORTAL GATEWAY ENTRIES (SPSEMS, SIWES, HOSTEL) ── */}
               <div style={s.portalsSection}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.6px', color: '#9ca3af', textTransform: 'uppercase' }}>
+                    Available Institutional Portals ({institution.code})
+                  </span>
+                  <span style={{ fontSize: 11, color: primaryColor, fontWeight: 600 }}>3 Gateways Integrated</span>
+                </div>
+
                 <div style={s.portalsGrid}>
-                  {portalCards.map((portal) => (
-                    <div
-                      key={portal.id}
-                      style={{
-                        ...s.portalCard,
-                        borderColor: portal.isCurrent ? `${primaryColor}40` : 'var(--border-subtle, #e5e7eb)',
-                      }}
-                    >
-                      <div style={s.portalCardBody}>
-                        <h4 style={s.portalTitle}>{portal.title}</h4>
-                        <p style={s.portalSubtitle} title={portal.subtitle}>
-                          {portal.subtitle}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={portal.onClick}
-                        className="portal-card-btn"
+                  {Object.values(INSTITUTIONAL_PORTALS).map((portal) => {
+                    const isSelected = activePortalId === portal.id;
+                    const Icon = portal.icon;
+                    return (
+                      <div
+                        key={portal.id}
                         style={{
-                          ...s.portalEnterBtn,
-                          backgroundColor: primaryColor,
+                          ...s.portalCard,
+                          borderColor: isSelected ? `${primaryColor}80` : 'var(--border-subtle, #e5e7eb)',
+                          backgroundColor: isSelected ? `${primaryColor}06` : 'var(--bg-card, #ffffff)',
                         }}
                       >
-                        {portal.actionText}
-                      </button>
-                    </div>
-                  ))}
+                        <div style={s.portalCardBody}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <Icon size={14} color={primaryColor} />
+                              <h4 style={s.portalTitle}>{portal.title}</h4>
+                            </div>
+                            <span style={{ ...s.portalGatewayPill, color: primaryColor, backgroundColor: `${primaryColor}14` }}>
+                              {portal.gatewayCode}
+                            </span>
+                          </div>
+                          <p style={s.portalSubtitle} title={portal.subtitle}>
+                            {portal.subtitle}
+                          </p>
+                        </div>
+
+                        {/* Unique Gateway Entry Button */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActivePortalId(portal.id);
+                            navigate(`/login/${institution.slug}/${portal.id}`);
+                          }}
+                          className="portal-card-btn"
+                          style={{
+                            ...s.portalEnterBtn,
+                            backgroundColor: primaryColor,
+                          }}
+                          title={`Access ${portal.title} via ${portal.gatewayCode}`}
+                        >
+                          <span>Enter &gt;</span>
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -636,43 +732,6 @@ export default function LandingPage() {
         </div>
       )}
 
-      {/* ── PORTAL INTEGRATION PREVIEW MODAL ──────────────────────────────── */}
-      {portalModal && (
-        <div style={s.modalOverlay} onClick={() => setPortalModal(null)}>
-          <div style={s.modalCard} onClick={(e) => e.stopPropagation()}>
-            <div style={s.modalHeader}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Layers size={18} color={primaryColor} />
-                <h3 style={s.modalTitle}>{portalModal.title}</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPortalModal(null)}
-                style={s.modalCloseBtn}
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div style={s.modalBadge}>{portalModal.phase}</div>
-            <p style={s.modalSubtitle}>{portalModal.subtitle}</p>
-            <p style={s.modalDesc}>{portalModal.description}</p>
-            <div style={s.modalInfoBox}>
-              <Info size={16} color={primaryColor} style={{ flexShrink: 0, marginTop: 2 }} />
-              <span style={{ fontSize: 12, color: 'var(--text-muted, #4b5563)', lineHeight: 1.4 }}>
-                This portal integration will be linked to your university domain. Currently, academic thesis and project operations are active via the SPSEMS portal.
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setPortalModal(null)}
-              style={{ ...s.modalOkBtn, backgroundColor: primaryColor }}
-            >
-              Continue with SPSEMS Login
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* ── FORGOT PASSWORD MODAL ─────────────────────────────────────────── */}
       {forgotModal && (
         <div style={s.modalOverlay} onClick={() => setForgotModal(false)}>
@@ -697,7 +756,7 @@ export default function LandingPage() {
               <Mail size={16} color={primaryColor} style={{ flexShrink: 0, marginTop: 2 }} />
               <div style={{ fontSize: 12, color: 'var(--text-muted, #4b5563)', lineHeight: 1.4 }}>
                 Please reach out to the ICT / Portal administrator at:{' '}
-                <b style={{ color: primaryColor }}>{institution.contact_email || `ict@${institution.domain || 'kwasu.edu.ng'}`}</b>{' '}
+                <b style={{ color: primaryColor }}>{institution.contact_email || `ict@${institution.domain || 'kwarastatepolytechnic.edu.ng'}`}</b>{' '}
                 or visit the student affairs portal for self-service reset.
               </div>
             </div>
@@ -963,7 +1022,7 @@ const s = {
   },
 
   formContainer: {
-    maxWidth: 440,
+    maxWidth: 460,
     width: '100%',
     margin: '0 auto',
     display: 'flex',
@@ -971,13 +1030,13 @@ const s = {
     alignItems: 'center',
   },
   logoWrapper: {
-    marginBottom: 14,
+    marginBottom: 12,
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
   },
   mainLogoImg: {
-    height: 100,
+    height: 95,
     maxWidth: 220,
     objectFit: 'contain',
   },
@@ -996,16 +1055,52 @@ const s = {
     fontSize: 17,
     fontWeight: 700,
     textAlign: 'center',
-    margin: '0 0 24px',
+    margin: '0 0 16px',
     letterSpacing: '-0.2px',
     lineHeight: 1.3,
+  },
+
+  gatewayIndicatorCard: {
+    width: '100%',
+    padding: '10px 14px',
+    borderRadius: 8,
+    border: '1px solid',
+    marginBottom: 14,
+    boxSizing: 'border-box',
+  },
+  gatewayCodeBadge: {
+    fontSize: 10,
+    fontWeight: 800,
+    padding: '2px 6px',
+    borderRadius: 4,
+    letterSpacing: '0.4px',
+  },
+
+  portalTabsRow: {
+    display: 'flex',
+    gap: 6,
+    width: '100%',
+    marginBottom: 16,
+  },
+  portalSelectorTab: {
+    flex: 1,
+    padding: '8px 4px',
+    fontSize: 11,
+    borderRadius: 6,
+    border: '1px solid',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    transition: 'all 0.15s ease',
   },
 
   loginForm: {
     width: '100%',
   },
   formGroup: {
-    marginBottom: 16,
+    marginBottom: 14,
     width: '100%',
   },
   formInput: {
@@ -1101,7 +1196,7 @@ const s = {
     borderRadius: 6,
     border: 'none',
     color: '#ffffff',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 700,
     letterSpacing: '0.6px',
     cursor: 'pointer',
@@ -1111,45 +1206,54 @@ const s = {
   // ── 3 PORTAL CARDS AT BOTTOM ──
   portalsSection: {
     width: '100%',
-    marginTop: 32,
+    marginTop: 28,
     paddingTop: 10,
   },
   portalsGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: 12,
+    gap: 10,
     width: '100%',
   },
   portalCard: {
     borderRadius: 8,
-    border: '1px solid var(--border-subtle, #e5e7eb)',
+    border: '1.5px solid var(--border-subtle, #e5e7eb)',
     backgroundColor: 'var(--bg-card, #ffffff)',
-    padding: '14px 12px 12px',
+    padding: '12px 10px 10px',
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'space-between',
-    minHeight: 100,
+    minHeight: 110,
     boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
     boxSizing: 'border-box',
   },
   portalCardBody: {
-    marginBottom: 10,
+    marginBottom: 8,
   },
   portalTitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 700,
-    margin: '0 0 4px',
+    margin: 0,
     color: 'var(--text-primary, #111827)',
-    lineHeight: 1.3,
+    lineHeight: 1.2,
+  },
+  portalGatewayPill: {
+    fontSize: 9,
+    fontWeight: 800,
+    padding: '1px 4px',
+    borderRadius: 3,
+    letterSpacing: '0.3px',
   },
   portalSubtitle: {
-    fontSize: 11,
+    fontSize: 10,
     color: 'var(--text-muted, #6b7280)',
-    margin: 0,
+    margin: '4px 0 0',
     lineHeight: 1.3,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
   },
   portalEnterBtn: {
     width: '100%',
@@ -1158,7 +1262,7 @@ const s = {
     border: 'none',
     color: '#ffffff',
     fontSize: 11,
-    fontWeight: 600,
+    fontWeight: 700,
     cursor: 'pointer',
     transition: 'all 0.15s ease',
   },
@@ -1169,8 +1273,8 @@ const s = {
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
-    marginTop: 24,
-    paddingTop: 16,
+    marginTop: 22,
+    paddingTop: 14,
     borderTop: '1px solid var(--border-subtle, #f3f4f6)',
     flexWrap: 'wrap',
     gap: 10,
@@ -1195,7 +1299,7 @@ const s = {
   },
   demoDrawer: {
     width: '100%',
-    marginTop: 14,
+    marginTop: 12,
     padding: '12px 14px',
     borderRadius: 8,
     backgroundColor: 'var(--bg-main, #f9fafb)',
@@ -1321,23 +1425,6 @@ const s = {
     cursor: 'pointer',
     color: '#6b7280',
     padding: 4,
-  },
-  modalBadge: {
-    display: 'inline-block',
-    fontSize: 10,
-    fontWeight: 700,
-    letterSpacing: '0.5px',
-    padding: '2px 8px',
-    borderRadius: 12,
-    backgroundColor: 'rgba(35,126,61,0.1)',
-    color: '#237e3d',
-    marginBottom: 8,
-  },
-  modalSubtitle: {
-    fontSize: 13,
-    fontWeight: 600,
-    color: 'var(--text-primary, #374151)',
-    margin: '0 0 10px',
   },
   modalDesc: {
     fontSize: 12,
