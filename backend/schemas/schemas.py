@@ -29,8 +29,13 @@ class ChapterEnum(str, Enum):
 
 class LoginRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
-    username: str = Field(..., min_length=3)
+    username: str = Field(..., min_length=2)
     password: str = Field(..., min_length=1)
+    verification_token: Optional[str] = None
+    institution_slug:   Optional[str] = None
+
+class VerifyTokenRequest(BaseModel):
+    verification_token: str = Field(..., min_length=4)
 
 class RegisterPublicRequest(BaseModel):
     role:       RoleEnum

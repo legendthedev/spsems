@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { LayoutDashboard, Users, Eye, Award, Bell, MessageSquare, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Eye, Award, Bell, MessageSquare, LogOut, Paperclip, FileText, Download, Camera } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 import { resolveLogoUrl } from '../utils/logoHelper';
 
@@ -269,8 +269,9 @@ function StudentsTab({ students, reload }) {
                               </span>
                               <span style={{ fontSize: 11, color: '#4b5563' }}>v{sub.version}</span>
                             </div>
-                            <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              &#128206; {sub.file_name || 'Unnamed file'}
+                            <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5 }}>
+                              <Paperclip size={12} />
+                              <span>{sub.file_name || 'Unnamed file'}</span>
                             </p>
                             <p style={{ fontSize: 11, color: '#374151', marginTop: 2 }}>{new Date(sub.uploaded_at).toLocaleString()}</p>
                             {sub.supervisor_comment && (
@@ -307,14 +308,17 @@ function StudentsTab({ students, reload }) {
                               />
                             ) : (
                               <div style={{ textAlign: 'center', padding: '20px 16px', background: 'rgba(245,158,11,0.04)', borderRadius: 8, border: '1px solid rgba(245,158,11,0.15)' }}>
-                                <p style={{ fontSize: 28, marginBottom: 8 }}>&#128196;</p>
+                                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+                                  <FileText size={32} color="#9ca3af" />
+                                </div>
                                 <p style={{ fontSize: 13, color: '#e5e7eb', fontWeight: 600, marginBottom: 4 }}>{sub.file_name}</p>
                                 <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 14 }}>
                                   Word and Office documents cannot be previewed in the browser.
                                 </p>
                                 <button onClick={() => handleDownload(sub)}
-                                  style={{ ...s.btn, fontSize: 12, padding: '8px 20px' }}>
-                                  ↓ Download File
+                                  style={{ ...s.btn, fontSize: 12, padding: '8px 20px', display: 'inline-flex', alignItems: 'center', gap: 6, margin: '0 auto' }}>
+                                  <Download size={14} />
+                                  <span>Download File</span>
                                 </button>
                               </div>
                             )}
@@ -435,10 +439,10 @@ function ReviewTab({ students, pendingReviews, reload }) {
                 </button>
                 <button
                   disabled={isDlBusy}
-                  style={{ ...s.smBtn, padding: '5px 10px' }}
+                  style={{ ...s.smBtn, padding: '5px 10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                   onClick={() => handleDownload(sub)}
                   title="Download file">
-                  {isDlBusy ? '…' : '↓'}
+                  {isDlBusy ? '…' : <Download size={12} />}
                 </button>
                 <button
                   style={isReviewing
@@ -457,7 +461,10 @@ function ReviewTab({ students, pendingReviews, reload }) {
             {isViewing && blobUrls[sub.doc_id] && (
               <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                  <span style={{ fontSize: 13, color: '#e5e7eb', fontWeight: 500 }}>&#128206; {sub.file_name}</span>
+                  <span style={{ fontSize: 13, color: '#e5e7eb', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Paperclip size={13} />
+                    <span>{sub.file_name}</span>
+                  </span>
                 </div>
                 {pdf ? (
                   <iframe
@@ -467,14 +474,17 @@ function ReviewTab({ students, pendingReviews, reload }) {
                   />
                 ) : (
                   <div style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, padding: '20px 16px', textAlign: 'center' }}>
-                    <p style={{ fontSize: 32, marginBottom: 8 }}>&#128196;</p>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+                      <FileText size={32} color="#9ca3af" />
+                    </div>
                     <p style={{ fontSize: 14, color: '#e5e7eb', fontWeight: 600, marginBottom: 4 }}>{sub.file_name}</p>
                     <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 14 }}>
                       Word and Office documents cannot be previewed in the browser.
                     </p>
                     <button onClick={() => handleDownload(sub)}
-                      style={{ ...s.btn, padding: '8px 20px', fontSize: 12 }}>
-                      ↓ Download File
+                      style={{ ...s.btn, padding: '8px 20px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6, margin: '0 auto' }}>
+                      <Download size={14} />
+                      <span>Download File</span>
                     </button>
                   </div>
                 )}
@@ -704,7 +714,9 @@ function ProfileTab({ user, onUpdate }) {
           {user?.avatar_url
             ? <img src={user.avatar_url} alt="avatar" style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', border: '2px solid #16a34a' }} />
             : <div style={{ width: 72, height: 72, background: '#15803d', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 700, color: '#fff', border: '2px solid #16a34a' }}>{user?.full_name?.[0]}</div>}
-          <div style={{ position: 'absolute', bottom: 0, right: 0, background: '#16a34a', borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>&#9998;</div>
+          <div style={{ position: 'absolute', bottom: 0, right: 0, background: '#16a34a', borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Camera size={11} color="#fff" />
+          </div>
         </div>
         <div>
           <p style={{ fontWeight: 700, fontSize: 16, color: '#fff' }}>{user?.full_name}</p>

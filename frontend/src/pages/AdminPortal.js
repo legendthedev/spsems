@@ -1,8 +1,9 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { LayoutDashboard, UserCog, Zap, Shuffle, History, Bell, LogOut, FolderOpen, BarChart2, Cpu, Building2, Upload } from 'lucide-react';
+import { LayoutDashboard, UserCog, Zap, Shuffle, History, Bell, LogOut, FolderOpen, BarChart2, Cpu, Building2, Upload, Camera, AlertTriangle, RefreshCw } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 import { resolveLogoUrl } from '../utils/logoHelper';
 
@@ -631,7 +632,9 @@ function ProfileTab({ user, onUpdate }) {
           {user?.avatar_url
             ? <img src={user.avatar_url} alt="avatar" style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', border: '2px solid #16a34a' }} />
             : <div style={{ width: 72, height: 72, background: '#14532d', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 700, color: '#fff', border: '2px solid #16a34a' }}>{user?.full_name?.[0]}</div>}
-          <div style={{ position: 'absolute', bottom: 0, right: 0, background: '#16a34a', borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>&#9998;</div>
+          <div style={{ position: 'absolute', bottom: 0, right: 0, background: '#16a34a', borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Camera size={11} color="#fff" />
+          </div>
         </div>
         <div>
           <p style={{ fontWeight: 700, fontSize: 16, color: '#fff' }}>{user?.full_name}</p>
@@ -739,7 +742,7 @@ function MLMetricsTab() {
   if (error) return (
     <div style={{ ...s.card, borderColor: 'rgba(239,68,68,0.3)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-        <span style={{ fontSize: 28 }}>⚠️</span>
+        <AlertTriangle size={28} color="#f87171" style={{ flexShrink: 0 }} />
         <div>
           <p style={{ fontSize: 15, fontWeight: 700, color: '#f87171' }}>ML Service Offline</p>
           <p style={{ fontSize: 13, color: '#9ca3af', marginTop: 2 }}>{error}</p>
@@ -779,7 +782,10 @@ function MLMetricsTab() {
           </div>
         ))}
         <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 2 }}>
-          <button onClick={load} style={{ ...s.smBtn, fontSize: 12, padding: '7px 14px' }}>↻ Refresh</button>
+          <button onClick={load} style={{ ...s.smBtn, fontSize: 12, padding: '7px 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <RefreshCw size={12} />
+            <span>Refresh</span>
+          </button>
         </div>
       </div>
 
@@ -805,8 +811,13 @@ function MLMetricsTab() {
               <button
                 disabled={retraining === id}
                 onClick={() => retrain(id)}
-                style={{ ...s.smBtn, background: 'rgba(167,139,250,0.1)', color: '#a78bfa', borderColor: 'rgba(167,139,250,0.2)' }}>
-                {retraining === id ? 'Training…' : '↺ Retrain'}
+                style={{ ...s.smBtn, background: 'rgba(167,139,250,0.1)', color: '#a78bfa', borderColor: 'rgba(167,139,250,0.2)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                {retraining === id ? 'Training…' : (
+                  <>
+                    <RefreshCw size={11} />
+                    <span>Retrain</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

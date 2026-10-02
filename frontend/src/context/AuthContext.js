@@ -22,8 +22,11 @@ export function AuthProvider({ children }) {
 
   useEffect(() => { loadProfile(); }, [loadProfile]);
 
-  const login = async (username, password) => {
-    const res = await api.post('/auth/login', { username, password });
+  const login = async (username, password, verification_token = null, institution_slug = null) => {
+    const payload = { username, password };
+    if (verification_token) payload.verification_token = verification_token;
+    if (institution_slug) payload.institution_slug = institution_slug;
+    const res = await api.post('/auth/login', payload);
     localStorage.setItem('token', res.data.token);
     setUser(res.data.user);
     return res.data.user;

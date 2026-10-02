@@ -35,10 +35,12 @@ def _audit(db: Session, user_id, username, role, action, ip, ok: bool):
 
 @router.post("/login")
 def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
+    uname = body.username.strip().lower()
     rows = db.execute(
         text("""SELECT u.*,
              inst.name AS institution_name, inst.code AS institution_code, inst.slug AS institution_slug,
              inst.logo_url AS institution_logo, inst.primary_color AS institution_primary_color,
+             inst.verification_token AS inst_verification_token, inst.is_verified AS inst_is_verified, inst.status AS inst_status,
              s.supervisor_id, s.expertise_areas, s.max_load, s.current_load, s.department AS sup_dept,
              st.student_id, st.matric_number, st.department AS stu_dept, st.level, st.project_id,
              st.supervisor_id AS student_sup_id, st.co_supervisor_id
@@ -46,8 +48,9 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
            LEFT JOIN institutions inst ON u.institution_id=inst.institution_id
            LEFT JOIN supervisors s  ON u.user_id=s.user_id
            LEFT JOIN students    st ON u.user_id=st.user_id
-           WHERE u.username=:username AND u.is_active=1"""),
-        {"username": body.username},
+           WHERE (LOWER(u.username)=:uname OR LOWER(u.email)=:uname OR (u.role='student' AND LOWER(st.matric_number)=:uname))
+             AND u.is_active=1"""),
+        {"uname": uname},
     ).fetchall()
 
     ip = request.client.host if request.client else "unknown"
@@ -55,12 +58,53 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
     if not rows:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid credentials.")
 
-    row = dict(rows[0]._mapping)
+    # Match institution if slug provided
+    row = None
+    if body.institution_slug:
+        req_slug = body.institution_slug.strip().lower()
+        for r in rows:
+            u_inst_slug = (r.institution_slug or "").strip().lower()
+            if u_inst_slug == req_slug or (req_slug == "kwasu" and not u_inst_slug):
+                row = dict(r._mapping)
+                break
+    if not row:
+        row = dict(rows[0]._mapping)
+
     ok = _verify_pw(body.password, row["password"])
     _audit(db, row["user_id"], row["username"], row["role"], "login", ip, ok)
 
     if not ok:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid credentials.")
+
+    # Verification token handling & node activation
+    token_submitted = (body.verification_token or "").strip()
+    inst_token = (row.get("inst_verification_token") or "").strip()
+    is_verified = bool(row.get("inst_is_verified"))
+    inst_status = row.get("inst_status") or "active"
+
+    if token_submitted:
+        if inst_token and token_submitted.upper() != inst_token.upper():
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Invalid institution verification token. Please check the token provided during onboarding."
+            )
+        if (not is_verified or inst_status != "active") and row.get("institution_id"):
+            db.execute(
+                text("""UPDATE institutions 
+                       SET is_verified=1, status='active',
+                           verified_at=COALESCE(verified_at, CURRENT_TIMESTAMP),
+                           activated_at=COALESCE(activated_at, CURRENT_TIMESTAMP)
+                       WHERE institution_id=:iid"""),
+                {"iid": row["institution_id"]}
+            )
+            db.commit()
+            row["inst_is_verified"] = 1
+            row["inst_status"] = "active"
+    elif inst_status == "pending_verification" and not is_verified and row.get("role") == "admin":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "This institution portal is pending domain verification. Please enter the verification token generated during onboarding to activate."
+        )
 
     payload = {
         "user_id":          row["user_id"],

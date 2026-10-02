@@ -64,6 +64,10 @@ class VerifyDomainRequest(BaseModel):
     verification_token: str
 
 
+class VerifyTokenRequest(BaseModel):
+    verification_token: str
+
+
 class UpdateSettingsRequest(BaseModel):
     academic_session: Optional[str] = "2025/2026"
     current_semester: Optional[str] = "First Semester"
@@ -562,8 +566,8 @@ def get_institution_by_slug(slug: str, db: Session = Depends(get_db)):
     row = db.execute(
         text("""
             SELECT i.institution_id, i.name, i.code, i.slug, i.official_domain,
-                   i.institution_type, i.state, i.city, i.logo_url,
-                   i.primary_color, i.secondary_color, i.status, i.is_verified,
+                   i.institution_type, i.state, i.city, i.contact_email, i.logo_url,
+                   i.primary_color, i.secondary_color, i.status, i.is_verified, i.verification_token,
                    s.academic_session, s.current_semester, s.dual_supervisor_for_postgrad
             FROM institutions i
             LEFT JOIN institution_settings s ON i.institution_id = s.institution_id
@@ -581,6 +585,7 @@ def get_institution_by_slug(slug: str, db: Session = Depends(get_db)):
         "code": row.code,
         "slug": row.slug,
         "domain": row.official_domain,
+        "contact_email": row.contact_email,
         "type": row.institution_type,
         "location": f"{row.city or ''}, {row.state or ''}".strip(", "),
         "logo_url": row.logo_url,
@@ -588,9 +593,55 @@ def get_institution_by_slug(slug: str, db: Session = Depends(get_db)):
         "secondary_color": row.secondary_color,
         "status": row.status,
         "is_verified": bool(row.is_verified),
+        "has_verification_token": bool(row.verification_token),
         "session": row.academic_session,
         "semester": row.current_semester,
         "dual_supervisor_for_postgrad": bool(row.dual_supervisor_for_postgrad),
+    }
+
+
+# ── VERIFY INSTITUTION TOKEN ─────────────────────────────────────────────────
+
+@router.post("/{slug_or_code}/verify-token")
+def verify_institution_token(slug_or_code: str, body: VerifyTokenRequest, db: Session = Depends(get_db)):
+    target = slug_or_code.lower().strip()
+    row = db.execute(
+        text("""SELECT institution_id, name, code, slug, verification_token, is_verified, status 
+                FROM institutions 
+                WHERE LOWER(slug)=:t OR UPPER(code)=:c"""),
+        {"t": target, "c": target.upper()}
+    ).fetchone()
+
+    if not row:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Institution '{slug_or_code}' not found.")
+
+    expected = (row.verification_token or "").strip()
+    submitted = (body.verification_token or "").strip()
+
+    if expected and submitted.upper() != expected.upper():
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Invalid verification token. Please enter the token generated during onboarding."
+        )
+
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    db.execute(
+        text("""UPDATE institutions 
+               SET is_verified=1, status='active',
+                   verified_at=COALESCE(verified_at, :now_str),
+                   activated_at=COALESCE(activated_at, :now_str)
+               WHERE institution_id=:iid"""),
+        {"iid": row.institution_id, "now_str": now_str}
+    )
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"Verification successful! {row.name} ({row.code}) portal node is now verified and active.",
+        "institution_id": row.institution_id,
+        "institution_code": row.code,
+        "status": "active",
+        "is_verified": True,
     }
 
 

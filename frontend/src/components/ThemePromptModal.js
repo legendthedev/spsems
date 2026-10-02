@@ -82,10 +82,20 @@ export default function ThemePromptModal() {
               Automatically adjusts between light and dark mode based on your phone, tablet, or computer's system preference.
             </p>
             <div style={styles.systemStatus}>
-              Detected on your device:{' '}
-              <strong style={{ color: systemIsDark ? '#38bdf8' : '#eab308' }}>
-                {systemIsDark ? '🌙 Dark Mode' : '☀️ Light Mode'}
-              </strong>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                Detected on your device:{' '}
+                <strong style={{ color: systemIsDark ? '#38bdf8' : '#eab308', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  {systemIsDark ? (
+                    <>
+                      <Moon size={12} /> Dark Mode
+                    </>
+                  ) : (
+                    <>
+                      <Sun size={12} /> Light Mode
+                    </>
+                  )}
+                </strong>
+              </span>
             </div>
           </div>
 

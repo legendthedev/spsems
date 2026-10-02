@@ -96,9 +96,15 @@ export default function PlatformLandingPage() {
                   dual-supervisor regulations, and instantly provision an isolated tenant for your campus.
                 </p>
                 <div style={s.featurePillRow}>
-                  <span style={s.featurePill}>✨ Instant Logo Color Extraction</span>
-                  <span style={s.featurePill}>🎓 MSc &amp; PhD Dual Supervision</span>
-                  <span style={s.featurePill}>🔒 Isolated Tenant Database</span>
+                  <span style={{ ...s.featurePill, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Sparkles size={13} color="#22c55e" /> Instant Logo Color Extraction
+                  </span>
+                  <span style={{ ...s.featurePill, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <GraduationCap size={13} color="#22c55e" /> MSc &amp; PhD Dual Supervision
+                  </span>
+                  <span style={{ ...s.featurePill, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Lock size={13} color="#22c55e" /> Isolated Tenant Database
+                  </span>
                 </div>
               </div>
             </div>

@@ -1,10 +1,12 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+// eslint-disable-next-line no-unused-vars
 import {
   Lock, User, LogIn, GraduationCap, Users, ShieldCheck, ArrowLeft,
-  ChevronDown, School
+  ChevronDown, School, KeyRound, Lightbulb, CheckCircle2, ShieldAlert
 } from 'lucide-react';
 import api from '../services/api';
 import ThemeToggle from '../components/ThemeToggle';
@@ -18,6 +20,7 @@ export default function LandingPage() {
 
   const querySlug = new URLSearchParams(location.search).get('institution') ||
                     new URLSearchParams(location.search).get('school');
+  const tokenQuery = new URLSearchParams(location.search).get('token') || '';
   const targetSlug = (routeSlug || querySlug || 'kwasu').toLowerCase();
 
   // Institution Branding State
@@ -29,14 +32,20 @@ export default function LandingPage() {
     primary_color: '#16a34a',
     secondary_color: '#080808',
     domain: '',
+    contact_email: targetSlug === 'kwasu' ? 'ict@kwasu.edu.ng' : '',
     session: '2025/2026',
     semester: 'First Semester',
     status: 'active',
+    is_verified: true,
   });
 
   const [allInstitutions, setAllInstitutions] = useState([]);
   const [showSchoolPicker, setShowSchoolPicker] = useState(false);
-  const [form, setForm] = useState({ username: '', password: '' });
+  const [form, setForm] = useState({
+    username: targetSlug === 'kwasu' ? 'ict@kwasu.edu.ng' : '',
+    password: '',
+    verification_token: tokenQuery,
+  });
   const [busy, setBusy] = useState(false);
 
   // Fetch institution data whenever slug changes
@@ -45,25 +54,38 @@ export default function LandingPage() {
       try {
         const res = await api.get(`/institutions/by-slug/${targetSlug}`);
         if (res.data) {
+          const instData = res.data;
           setInstitution({
-            name: res.data.name,
-            code: res.data.code,
-            slug: res.data.slug,
-            logo_url: res.data.logo_url || (targetSlug === 'kwasu' ? '/kwasu.png' : ''),
-            primary_color: res.data.primary_color || '#16a34a',
-            secondary_color: res.data.secondary_color || '#080808',
-            domain: res.data.domain,
-            session: res.data.session || '2025/2026',
-            semester: res.data.semester || 'First Semester',
-            status: res.data.status,
+            name: instData.name,
+            code: instData.code,
+            slug: instData.slug,
+            logo_url: instData.logo_url || (targetSlug === 'kwasu' ? '/kwasu.png' : ''),
+            primary_color: instData.primary_color || '#16a34a',
+            secondary_color: instData.secondary_color || '#080808',
+            domain: instData.domain,
+            contact_email: instData.contact_email,
+            session: instData.session || '2025/2026',
+            semester: instData.semester || 'First Semester',
+            status: instData.status,
+            is_verified: instData.is_verified,
+            has_verification_token: instData.has_verification_token,
           });
+
+          // Automatically set official main email address as default username
+          if (instData.contact_email) {
+            setForm(prev => ({
+              ...prev,
+              username: prev.username && prev.username !== 'ict@kwasu.edu.ng' ? prev.username : instData.contact_email,
+              verification_token: prev.verification_token || tokenQuery || '',
+            }));
+          }
         }
       } catch (err) {
         console.warn(`Could not load institution for slug '${targetSlug}', default to KWASU.`);
       }
     }
     loadInstitution();
-  }, [targetSlug]);
+  }, [targetSlug, tokenQuery]);
 
   // Fetch all schools for the dropdown switcher
   useEffect(() => {
@@ -84,7 +106,12 @@ export default function LandingPage() {
     e.preventDefault();
     setBusy(true);
     try {
-      const user = await login(form.username, form.password);
+      const user = await login(
+        form.username,
+        form.password,
+        form.verification_token || null,
+        institution.slug
+      );
       toast.success(`Welcome back, ${user.full_name}`);
       navigate(`/${user.role}`);
     } catch (err) {
@@ -247,13 +274,13 @@ export default function LandingPage() {
         {/* Login Form */}
         <form onSubmit={handleSubmit} style={s.form}>
           <div style={s.fieldWrap}>
-            <label style={s.label}>Username or Matric Number</label>
+            <label style={s.label}>Institution Official Email / Username</label>
             <div style={s.inputWrap}>
               <User size={15} style={s.inputIcon} />
               <input
                 style={s.input}
                 type="text"
-                placeholder={isKwasu ? "e.g. student1, supervisor1, or admin" : "Enter your username / matric"}
+                placeholder={institution.contact_email ? `e.g. ${institution.contact_email}` : (isKwasu ? "e.g. ict@kwasu.edu.ng or student1" : "Enter your official email or username")}
                 value={form.username}
                 onChange={(e) => setForm({ ...form, username: e.target.value })}
                 required
@@ -269,13 +296,44 @@ export default function LandingPage() {
               <input
                 style={s.input}
                 type="password"
-                placeholder="Enter your password"
+                placeholder="Enter your account password"
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
                 required
                 autoComplete="current-password"
               />
             </div>
+          </div>
+
+          <div style={s.fieldWrap}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+              <label style={s.label}>Institution Verification Token</label>
+              {institution.is_verified ? (
+                <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <CheckCircle2 size={12} />
+                  Verified Node
+                </span>
+              ) : (
+                <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <ShieldAlert size={12} />
+                  Token Required
+                </span>
+              )}
+            </div>
+            <div style={s.inputWrap}>
+              <KeyRound size={15} style={s.inputIcon} />
+              <input
+                style={s.input}
+                type="text"
+                placeholder="e.g. VTOK-XXXXXXXX... (Issued at onboarding)"
+                value={form.verification_token}
+                onChange={(e) => setForm({ ...form, verification_token: e.target.value })}
+                autoComplete="off"
+              />
+            </div>
+            <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-dim, #6b7280)', lineHeight: 1.4 }}>
+              Submit the token generated during the onboarding session to authenticate and unlock this portal.
+            </p>
           </div>
 
           <button
@@ -347,9 +405,12 @@ export default function LandingPage() {
           </div>
         ) : (
           <div style={s.customSchoolHint}>
-            <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted, #9ca3af)', lineHeight: 1.5 }}>
-              💡 <b>Institutional Portal</b>: Sign in using your {institution.name} administrative account,
-              or use student/lecturer self-registration above with your <code style={s.code}>@{institution.domain}</code> email.
+            <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted, #9ca3af)', lineHeight: 1.5, display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+              <Lightbulb size={14} color="#eab308" style={{ flexShrink: 0, marginTop: 2 }} />
+              <span>
+                <b>Institutional Portal</b>: Sign in using your {institution.name} administrative account,
+                or use student/lecturer self-registration above with your <code style={s.code}>@{institution.domain}</code> email.
+              </span>
             </p>
           </div>
         )}

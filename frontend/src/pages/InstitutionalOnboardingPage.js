@@ -276,8 +276,8 @@ export default function InstitutionalOnboardingPage() {
           }
 
           toast.success(
-            <span>
-              🎯 Extracted official palette: <b>{primaryChoice}</b> (Primary) &amp; <b>{secondaryChoice}</b>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <Palette size={15} color={primaryChoice} /> Extracted official palette: <b>{primaryChoice}</b> (Primary) &amp; <b>{secondaryChoice}</b>
             </span>,
             { duration: 4000 }
           );
@@ -1235,7 +1235,13 @@ export default function InstitutionalOnboardingPage() {
                   <code style={s.codeSnippet}>{onboardResult.subdomain_slug}.spsems.edu.ng</code>
                 </div>
                 <div style={s.summaryRow}>
-                  <span style={s.summaryLabel}>Lead Admin Account</span>
+                  <span style={s.summaryLabel}>Official Email (Login Username)</span>
+                  <span style={s.summaryVal}>
+                    <code style={s.codeSnippet}>{form.email || onboardResult.admin_username}</code>
+                  </span>
+                </div>
+                <div style={s.summaryRow}>
+                  <span style={s.summaryLabel}>Lead Admin User</span>
                   <span style={s.summaryVal}>
                     Username: <code style={s.codeSnippet}>{onboardResult.admin_username}</code>
                   </span>
@@ -1286,7 +1292,7 @@ export default function InstitutionalOnboardingPage() {
               <div style={s.successActionRow}>
                 <button
                   type="button"
-                  onClick={() => navigate(`/login/${onboardResult.subdomain_slug}`)}
+                  onClick={() => navigate(`/login/${onboardResult.subdomain_slug}?token=${encodeURIComponent(onboardResult.verification_token || '')}`)}
                   style={{ ...s.btnPrimary, background: form.primary_color }}
                 >
                   <span>Launch {onboardResult.institution_code} SPSEMS Login</span>
