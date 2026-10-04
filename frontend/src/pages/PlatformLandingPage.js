@@ -164,236 +164,267 @@ export default function PlatformLandingPage() {
             />
           </div>
 
-          {/* FEATURED: KWASU MULTI-PORTAL GATEWAY (LIVE PRIMARY NODE) */}
-          <div style={s.featuredKwasuCard}>
-            <div style={s.featuredHeader}>
-              <div style={s.featuredLogoWrap}>
-                <div style={s.featuredCrestBadge}>
-                  <School size={28} color="#22c55e" />
-                </div>
-                <div>
-                  <div style={s.featuredBadgeRow}>
-                    <span style={s.livePulse} />
-                    <span style={s.featuredStatus}>LIVE &amp; OPERATIONAL (100% Active)</span>
-                  </div>
-                  <h3 style={s.featuredName}>Kwara State University (KWASU Campus Gateway)</h3>
-                  <div style={s.featuredMeta}>
-                    <span>Domain: <b>kwasu.edu.ng</b></span>
-                    <span>•</span>
-                    <span>Malete, Kwara State</span>
-                    <span>•</span>
-                    <span>State University</span>
-                  </div>
-                </div>
+          {directory.length === 0 ? (
+            <div style={{
+              background: 'var(--card-bg, #111827)',
+              border: '2px dashed rgba(255, 255, 255, 0.15)',
+              borderRadius: 16,
+              padding: '48px 24px',
+              textAlign: 'center',
+              maxWidth: 720,
+              margin: '0 auto 32px'
+            }}>
+              <div style={{
+                width: 60,
+                height: 60,
+                borderRadius: '50%',
+                background: 'rgba(245, 158, 11, 0.12)',
+                border: '1.5px solid rgba(245, 158, 11, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+                color: '#f59e0b'
+              }}>
+                <Building2 size={30} />
               </div>
-
-              <div style={s.featuredActionWrap}>
-                <span style={{ fontSize: 12, color: '#9ca3af', fontWeight: 600 }}>Active Instance:</span>
-                <span style={{ fontSize: 12, color: '#22c55e', background: 'rgba(34,197,94,0.1)', padding: '4px 10px', borderRadius: 6, fontWeight: 700 }}>
-                  KWASU-GATEWAY-2026
-                </span>
+              <div style={{ display: 'inline-block', fontSize: 11, fontWeight: 800, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)', padding: '3px 12px', borderRadius: 999, letterSpacing: '0.6px', textTransform: 'uppercase', marginBottom: 12 }}>
+                CLEAN-SLATE DATABASE (0 SCHOOLS ONBOARDED)
               </div>
-            </div>
-
-            <div style={s.featuredDivider} />
-
-            {/* 3 Specialized Portal Gateways Row */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: '0.6px', textTransform: 'uppercase', marginBottom: 12 }}>
-                SELECT A SPECIALIZED PORTAL GATEWAY:
-              </div>
-              <div style={s.portalsGrid}>
-                {/* Portal 1: SPSEMS */}
-                <div style={s.portalCard}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                    <div style={{ ...s.portalIconCircle, background: 'rgba(34,197,94,0.15)', color: '#22c55e' }}>
-                      <Layers size={18} />
-                    </div>
-                    <div>
-                      <div style={s.portalBadge}>GATEWAY: SPSEMS-01</div>
-                      <h4 style={s.portalTitle}>SPSEMS Portal</h4>
-                    </div>
-                  </div>
-                  <p style={s.portalDesc}>
-                    Thesis, dissertation &amp; project supervision with AI milestone tracking and postgraduate dual-supervision.
-                  </p>
-                  <Link to="/login" style={{ ...s.portalLaunchBtn, background: '#16a34a' }}>
-                    <Lock size={13} />
-                    <span>Enter SPSEMS</span>
-                    <ArrowRight size={13} />
-                  </Link>
-                </div>
-
-                {/* Portal 2: SIWES */}
-                <div style={s.portalCard}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                    <div style={{ ...s.portalIconCircle, background: 'rgba(56,189,248,0.15)', color: '#38bdf8' }}>
-                      <Briefcase size={18} />
-                    </div>
-                    <div>
-                      <div style={{ ...s.portalBadge, color: '#38bdf8' }}>GATEWAY: SIWES-02</div>
-                      <h4 style={s.portalTitle}>SIWES / IT Placement</h4>
-                    </div>
-                  </div>
-                  <p style={s.portalDesc}>
-                    Students Industrial Work Experience Scheme (SIWES), weekly e-logbook verification, and field evaluations.
-                  </p>
-                  <Link to="/portal/kwasu/siwes" style={{ ...s.portalLaunchBtn, background: '#0284c7' }}>
-                    <Briefcase size={13} />
-                    <span>Enter SIWES</span>
-                    <ArrowRight size={13} />
-                  </Link>
-                </div>
-
-                {/* Portal 3: HOSTEL */}
-                <div style={s.portalCard}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                    <div style={{ ...s.portalIconCircle, background: 'rgba(168,85,247,0.15)', color: '#a855f7' }}>
-                      <Home size={18} />
-                    </div>
-                    <div>
-                      <div style={{ ...s.portalBadge, color: '#a855f7' }}>GATEWAY: HOSTEL-03</div>
-                      <h4 style={s.portalTitle}>Hostel Allocation</h4>
-                    </div>
-                  </div>
-                  <p style={s.portalDesc}>
-                    Campus residence hall selection, real-time bedspace reservations, balloting, and hall warden clearance.
-                  </p>
-                  <Link to="/portal/kwasu/hostel" style={{ ...s.portalLaunchBtn, background: '#7e22ce' }}>
-                    <Home size={13} />
-                    <span>Enter Hostel</span>
-                    <ArrowRight size={13} />
-                  </Link>
-                </div>
-              </div>
-            </div>
-
-            <div style={s.featuredBody}>
-              <div style={s.featuredDescCol}>
-                {/* Quick Registration Links */}
-                <div style={s.quickRegRow}>
-                  <span style={s.quickRegLabel}>KWASU Direct Registration:</span>
-                  <Link to="/register" style={s.quickRegBtn}>
-                    <GraduationCap size={13} />
-                    <span>Student Registration</span>
-                  </Link>
-                  <Link to="/register/lecturer" style={s.quickRegBtn}>
-                    <Users size={13} />
-                    <span>Lecturer Registration</span>
-                  </Link>
-                  <Link to="/register/admin" style={s.quickRegBtn}>
-                    <ShieldCheck size={13} />
-                    <span>HOD / Admin Access</span>
-                  </Link>
-                </div>
-              </div>
-
-              {/* Demo Credentials Box */}
-              <div style={s.kwasuDemoBox}>
-                <div style={s.kwasuDemoTitle}>KWASU DEMO CREDENTIALS</div>
-                <div style={s.kwasuDemoList}>
-                  <div style={s.kwasuDemoItem}>
-                    <span style={s.kwasuDemoRole}>HOD / Admin:</span>
-                    <code style={s.kwasuCode}>admin</code>
-                    <span style={{ color: '#6b7280' }}>/</span>
-                    <code style={s.kwasuCode}>password123</code>
-                  </div>
-                  <div style={s.kwasuDemoItem}>
-                    <span style={s.kwasuDemoRole}>Supervisor:</span>
-                    <code style={s.kwasuCode}>supervisor1</code>
-                    <span style={{ color: '#6b7280' }}>/</span>
-                    <code style={s.kwasuCode}>password123</code>
-                  </div>
-                  <div style={s.kwasuDemoItem}>
-                    <span style={s.kwasuDemoRole}>Student:</span>
-                    <code style={s.kwasuCode}>student1</code>
-                    <span style={{ color: '#6b7280' }}>/</span>
-                    <code style={s.kwasuCode}>password123</code>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* OTHER REGISTERED / ONBOARDED INSTITUTIONS GRID */}
-          <div style={s.otherSchoolsSection}>
-            <div style={s.otherSchoolsHead}>
-              <h3 style={s.otherSchoolsTitle}>
-                Other Registered Institutions ({filteredSchools.length})
+              <h3 style={{ fontSize: 19, fontWeight: 800, color: 'var(--text-color, #ffffff)', marginBottom: 10 }}>
+                No Academic Institutions Onboarded Yet
               </h3>
-              <a href="#institution-onboarding" style={s.addSchoolLink}>
-                + Onboard New Institution (Pipeline 3)
-              </a>
+              <p style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.6, maxWidth: 540, margin: '0 auto 24px' }}>
+                The system database has been cleared to a clean state. No universities or polytechnics have been onboarded yet.
+                Once an academic institution completes the 7-stage onboarding workflow, its official emblem and dedicated multi-portal gateway will be published here.
+              </p>
+              <Link to="/onboard" style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                background: '#16a34a',
+                color: '#ffffff',
+                fontWeight: 700,
+                fontSize: 13,
+                padding: '12px 24px',
+                borderRadius: 10,
+                textDecoration: 'none',
+                boxShadow: '0 4px 14px rgba(22, 163, 74, 0.3)',
+                transition: 'all 0.2s ease'
+              }}>
+                <Building2 size={16} />
+                <span>Onboard Your Institution Now (Pipeline 3)</span>
+                <ArrowRight size={16} />
+              </Link>
             </div>
-
-            <div style={s.schoolsGrid}>
-              {filteredSchools.map((inst) => (
-                <div
-                  key={inst.id}
-                  style={{
-                    ...s.schoolCard,
-                    borderTop: `4px solid ${inst.primary_color || '#16a34a'}`,
-                  }}
-                >
-                  <div style={s.schoolCardTop}>
-                    {resolveLogoUrl(inst.logo) && (inst.slug === 'kwasu' || inst.logo !== '/kwasu.png') ? (
-                      <img
-                        src={resolveLogoUrl(inst.logo)}
-                        alt={inst.name}
-                        style={s.schoolCardLogo}
-                        onError={(e) => { e.target.style.display = 'none'; }}
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          ...s.schoolCardFallback,
-                          background: `${inst.primary_color || '#16a34a'}22`,
-                          color: inst.primary_color || '#16a34a',
-                          border: `1.5px solid ${inst.primary_color || '#16a34a'}44`,
-                        }}
-                      >
-                        {inst.code || (inst.name ? inst.name.slice(0, 2).toUpperCase() : 'UN')}
+          ) : (
+            <>
+              {/* FEATURED MULTI-PORTAL GATEWAY */}
+              <div style={s.featuredKwasuCard}>
+                <div style={s.featuredHeader}>
+                  <div style={s.featuredLogoWrap}>
+                    <div style={s.featuredCrestBadge}>
+                      <School size={28} color="#22c55e" />
+                    </div>
+                    <div>
+                      <div style={s.featuredBadgeRow}>
+                        <span style={s.livePulse} />
+                        <span style={s.featuredStatus}>LIVE &amp; OPERATIONAL (100% Active)</span>
                       </div>
-                    )}
-                    <div style={s.schoolCardInfo}>
-                      <div style={s.schoolCardName}>{inst.name}</div>
-                      <div style={s.schoolCardDomain}>{inst.domain}</div>
+                      <h3 style={s.featuredName}>{directory[0]?.name} Campus Gateway</h3>
+                      <div style={s.featuredMeta}>
+                        <span>Domain: <b>{directory[0]?.domain}</b></span>
+                        <span>•</span>
+                        <span>{directory[0]?.location || 'Nigeria'}</span>
+                        <span>•</span>
+                        <span>{directory[0]?.type || 'University'}</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div style={s.schoolCardMeta}>
-                    <span style={s.schoolCardTag}>{inst.type}</span>
-                    <span style={s.schoolCardLocation}>{inst.location || 'Nigeria'}</span>
+                  <div style={s.featuredActionWrap}>
+                    <span style={{ fontSize: 12, color: '#9ca3af', fontWeight: 600 }}>Active Instance:</span>
+                    <span style={{ fontSize: 12, color: '#22c55e', background: 'rgba(34,197,94,0.1)', padding: '4px 10px', borderRadius: 6, fontWeight: 700 }}>
+                      {directory[0]?.code || 'CAMPUS'}-GATEWAY
+                    </span>
                   </div>
+                </div>
 
-                  <div style={s.schoolCardBottom}>
-                    <div style={s.schoolStatusWrap}>
-                      <span
-                        style={{
-                          ...s.statusDot,
-                          background: inst.status === 'active' ? '#16a34a' : '#f59e0b',
-                        }}
-                      />
-                      <span style={s.statusText}>
-                        {inst.status === 'active' ? 'Active Gateway' : 'Configuring'}
-                      </span>
+                <div style={s.featuredDivider} />
+
+                {/* 3 Specialized Portal Gateways Row */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: '0.6px', textTransform: 'uppercase', marginBottom: 12 }}>
+                    SELECT A SPECIALIZED PORTAL GATEWAY:
+                  </div>
+                  <div style={s.portalsGrid}>
+                    {/* Portal 1: SPSEMS */}
+                    <div style={s.portalCard}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                        <div style={{ ...s.portalIconCircle, background: 'rgba(34,197,94,0.15)', color: '#22c55e' }}>
+                          <Layers size={18} />
+                        </div>
+                        <div>
+                          <div style={s.portalBadge}>GATEWAY: SPSEMS-01</div>
+                          <h4 style={s.portalTitle}>SPSEMS Portal</h4>
+                        </div>
+                      </div>
+                      <p style={s.portalDesc}>
+                        Thesis, dissertation &amp; project supervision with AI milestone tracking and postgraduate dual-supervision.
+                      </p>
+                      <Link to="/login" style={{ ...s.portalLaunchBtn, background: '#16a34a' }}>
+                        <Lock size={13} />
+                        <span>Enter SPSEMS</span>
+                        <ArrowRight size={13} />
+                      </Link>
                     </div>
 
-                    <Link
-                      to={`/login/${inst.slug}`}
+                    {/* Portal 2: SIWES */}
+                    <div style={s.portalCard}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                        <div style={{ ...s.portalIconCircle, background: 'rgba(56,189,248,0.15)', color: '#38bdf8' }}>
+                          <Briefcase size={18} />
+                        </div>
+                        <div>
+                          <div style={{ ...s.portalBadge, color: '#38bdf8' }}>GATEWAY: SIWES-02</div>
+                          <h4 style={s.portalTitle}>SIWES / IT Placement</h4>
+                        </div>
+                      </div>
+                      <p style={s.portalDesc}>
+                        Students Industrial Work Experience Scheme (SIWES), weekly e-logbook verification, and field evaluations.
+                      </p>
+                      <Link to={`/portal/${directory[0]?.slug}/siwes`} style={{ ...s.portalLaunchBtn, background: '#0284c7' }}>
+                        <Briefcase size={13} />
+                        <span>Enter SIWES</span>
+                        <ArrowRight size={13} />
+                      </Link>
+                    </div>
+
+                    {/* Portal 3: HOSTEL */}
+                    <div style={s.portalCard}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                        <div style={{ ...s.portalIconCircle, background: 'rgba(168,85,247,0.15)', color: '#a855f7' }}>
+                          <Home size={18} />
+                        </div>
+                        <div>
+                          <div style={{ ...s.portalBadge, color: '#a855f7' }}>GATEWAY: HOSTEL-03</div>
+                          <h4 style={s.portalTitle}>Hostel Allocation</h4>
+                        </div>
+                      </div>
+                      <p style={s.portalDesc}>
+                        Campus residence hall selection, real-time bedspace reservations, balloting, and hall warden clearance.
+                      </p>
+                      <Link to={`/portal/${directory[0]?.slug}/hostel`} style={{ ...s.portalLaunchBtn, background: '#7e22ce' }}>
+                        <Home size={13} />
+                        <span>Enter Hostel</span>
+                        <ArrowRight size={13} />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={s.featuredBody}>
+                  <div style={s.featuredDescCol}>
+                    <div style={s.quickRegRow}>
+                      <span style={s.quickRegLabel}>Direct Registration:</span>
+                      <Link to="/register" style={s.quickRegBtn}>
+                        <GraduationCap size={13} />
+                        <span>Student Registration</span>
+                      </Link>
+                      <Link to="/register/lecturer" style={s.quickRegBtn}>
+                        <Users size={13} />
+                        <span>Lecturer Registration</span>
+                      </Link>
+                      <Link to="/register/admin" style={s.quickRegBtn}>
+                        <ShieldCheck size={13} />
+                        <span>HOD / Admin Access</span>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* REGISTERED INSTITUTIONS GRID */}
+              <div style={s.otherSchoolsSection}>
+                <div style={s.otherSchoolsHead}>
+                  <h3 style={s.otherSchoolsTitle}>
+                    Onboarded Institutions ({filteredSchools.length})
+                  </h3>
+                  <a href="#institution-onboarding" style={s.addSchoolLink}>
+                    + Onboard New Institution (Pipeline 3)
+                  </a>
+                </div>
+
+                <div style={s.schoolsGrid}>
+                  {filteredSchools.map((inst) => (
+                    <div
+                      key={inst.id}
                       style={{
-                        ...s.schoolCardBtn,
-                        background: inst.primary_color || '#16a34a',
+                        ...s.schoolCard,
+                        borderTop: `4px solid ${inst.primary_color || '#16a34a'}`,
                       }}
                     >
-                      <span>Open Gateway</span>
-                      <ChevronRight size={14} />
-                    </Link>
-                  </div>
+                      <div style={s.schoolCardTop}>
+                        {resolveLogoUrl(inst.logo) && (inst.slug === 'kwasu' || inst.logo !== '/kwasu.png') ? (
+                          <img
+                            src={resolveLogoUrl(inst.logo)}
+                            alt={inst.name}
+                            style={s.schoolCardLogo}
+                            onError={(e) => { e.target.style.display = 'none'; }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              ...s.schoolCardFallback,
+                              background: `${inst.primary_color || '#16a34a'}22`,
+                              color: inst.primary_color || '#16a34a',
+                              border: `1.5px solid ${inst.primary_color || '#16a34a'}44`,
+                            }}
+                          >
+                            {inst.code || (inst.name ? inst.name.slice(0, 2).toUpperCase() : 'UN')}
+                          </div>
+                        )}
+                        <div style={s.schoolCardInfo}>
+                          <div style={s.schoolCardName}>{inst.name}</div>
+                          <div style={s.schoolCardDomain}>{inst.domain}</div>
+                        </div>
+                      </div>
+
+                      <div style={s.schoolCardMeta}>
+                        <span style={s.schoolCardTag}>{inst.type}</span>
+                        <span style={s.schoolCardLocation}>{inst.location || 'Nigeria'}</span>
+                      </div>
+
+                      <div style={s.schoolCardBottom}>
+                        <div style={s.schoolStatusWrap}>
+                          <span
+                            style={{
+                              ...s.statusDot,
+                              background: inst.status === 'active' ? '#16a34a' : '#f59e0b',
+                            }}
+                          />
+                          <span style={s.statusText}>
+                            {inst.status === 'active' ? 'Active Gateway' : 'Configuring'}
+                          </span>
+                        </div>
+
+                        <Link
+                          to={`/login/${inst.slug}`}
+                          style={{
+                            ...s.schoolCardBtn,
+                            background: inst.primary_color || '#16a34a',
+                          }}
+                        >
+                          <span>Open Gateway</span>
+                          <ChevronRight size={14} />
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
+            </>
+          )}
         </section>
 
         {/* ── PIPELINE 3: INSTITUTIONAL ONBOARDING & ACADEMIC SETUP ─── */}
