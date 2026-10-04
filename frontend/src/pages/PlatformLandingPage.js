@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   Building2, ArrowRight, ShieldCheck, GraduationCap, Users,
   Sparkles, Search, ChevronRight, School,
-  Lock, Layers
+  Lock, Layers, Briefcase, Home, ArrowDown
 } from 'lucide-react';
 import api from '../services/api';
 import ThemeToggle from '../components/ThemeToggle';
@@ -46,13 +46,16 @@ export default function PlatformLandingPage() {
             </div>
             <div>
               <div style={s.navBrand}>SPSEMS</div>
-              <div style={s.navTagline}>National Higher Education Platform</div>
+              <div style={s.navTagline}>National Higher Education Multi-Portal Platform</div>
             </div>
           </div>
 
           <div style={s.navActions}>
-            <a href="#existing-login" style={s.navAnchor}>
-              Existing Login
+            <a href="#campus-gateway" style={s.navAnchor}>
+              Pipeline 2: Gateways
+            </a>
+            <a href="#institution-onboarding" style={s.navAnchor}>
+              Pipeline 3: Onboard
             </a>
             <Link to="/onboard" style={s.navOnboardBtn}>
               <Building2 size={15} />
@@ -63,12 +66,12 @@ export default function PlatformLandingPage() {
         </div>
       </header>
 
-      {/* ── HERO & INSTITUTIONAL ONBOARDING SPOTLIGHT ─────────────────── */}
       <main style={s.main}>
+        {/* ── PIPELINE 1: MAIN LANDING PAGE ────────────────────────────── */}
         <section style={s.heroSection}>
           <div style={s.platformPill}>
             <Sparkles size={14} color="#22c55e" />
-            <span>Autonomous Multi-University Supervision &amp; Evaluation Network</span>
+            <span>PIPELINE 1: MAIN LANDING PAGE</span>
           </div>
 
           <h1 style={s.heroHeading}>
@@ -76,60 +79,76 @@ export default function PlatformLandingPage() {
           </h1>
 
           <p style={s.heroSubheading}>
-            A unified academic management ecosystem for universities, polytechnics, and colleges.
-            Empowering institutions with AI-driven supervisor allocation, postgraduate dual-supervision governance,
-            and end-to-end dissertation defense grading.
+            A unified multi-portal academic ecosystem for higher education institutions.
+            Connecting students, supervisors, and institutional administrators across specialized portals:
+            <strong> SPSEMS Dissertation Supervision</strong>, <strong>SIWES Industrial Training</strong>, and <strong>Hostel Bedspace Allocation</strong>.
           </p>
 
-          {/* ── PRIMARY CALLOUT: ARE YOU AN ACADEMIC INSTITUTION? ONBOARD YOUR UNIVERSITY ── */}
-          <div style={s.heroOnboardCard}>
-            <div style={s.heroOnboardLeft}>
-              <div style={s.onboardIconBadge}>
-                <Building2 size={32} color="#22c55e" />
-              </div>
-              <div style={s.onboardTextGroup}>
-                <div style={s.onboardPre}>INSTITUTIONAL SELF-PROVISIONING</div>
-                <h2 style={s.onboardTitle}>Are you an Academic Institution?</h2>
-                <p style={s.onboardDesc}>
-                  Onboard your university or polytechnic onto SPSEMS in minutes. Upload your official emblem to
-                  automatically extract your custom brand colors, customize degree policies &amp; postgraduate
-                  dual-supervisor regulations, and instantly provision an isolated tenant for your campus.
-                </p>
-                <div style={s.featurePillRow}>
-                  <span style={{ ...s.featurePill, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <Sparkles size={13} color="#22c55e" /> Instant Logo Color Extraction
-                  </span>
-                  <span style={{ ...s.featurePill, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <GraduationCap size={13} color="#22c55e" /> MSc &amp; PhD Dual Supervision
-                  </span>
-                  <span style={{ ...s.featurePill, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <Lock size={13} color="#22c55e" /> Isolated Tenant Database
-                  </span>
-                </div>
+          {/* Quick Jump Action Buttons */}
+          <div style={s.heroActionRow}>
+            <a href="#campus-gateway" style={s.heroPrimaryBtn}>
+              <Layers size={17} />
+              <span>Enter Campus Gateway</span>
+              <ArrowDown size={15} />
+            </a>
+            <a href="#institution-onboarding" style={s.heroSecondaryBtn}>
+              <Building2 size={17} />
+              <span>Onboard Your Institution</span>
+              <ChevronRight size={15} />
+            </a>
+          </div>
+
+          {/* 5-Pipeline Master Architecture Stepper */}
+          <div style={s.pipelineMasterBar}>
+            <div style={{ ...s.pipelineStep, borderLeft: '3px solid #22c55e' }}>
+              <span style={s.pipelineNum}>P1</span>
+              <div>
+                <div style={s.pipelineName}>Landing Page</div>
+                <div style={s.pipelineDesc}>Public Front-Door</div>
               </div>
             </div>
-
-            <div style={s.heroOnboardRight}>
-              <Link to="/onboard" style={s.heroCtaBtn}>
-                <span>Onboard Your University</span>
-                <ArrowRight size={18} />
-              </Link>
-              <span style={s.ctaNote}>Free institutional setup • Self-service activation</span>
+            <div style={{ ...s.pipelineStep, borderLeft: '3px solid #38bdf8' }}>
+              <span style={{ ...s.pipelineNum, color: '#38bdf8' }}>P2</span>
+              <div>
+                <div style={s.pipelineName}>Multi-Portal Gateway</div>
+                <div style={s.pipelineDesc}>SPSEMS, SIWES, Hostel</div>
+              </div>
+            </div>
+            <div style={{ ...s.pipelineStep, borderLeft: '3px solid #f59e0b' }}>
+              <span style={{ ...s.pipelineNum, color: '#f59e0b' }}>P3</span>
+              <div>
+                <div style={s.pipelineName}>Onboarding &amp; Setup</div>
+                <div style={s.pipelineDesc}>7-Stage &amp; Supervision</div>
+              </div>
+            </div>
+            <div style={{ ...s.pipelineStep, borderLeft: '3px solid #a855f7' }}>
+              <span style={{ ...s.pipelineNum, color: '#a855f7' }}>P4</span>
+              <div>
+                <div style={s.pipelineName}>Live DB AI Pipeline</div>
+                <div style={s.pipelineDesc}>XGBoost &amp; RF Retrain</div>
+              </div>
+            </div>
+            <div style={{ ...s.pipelineStep, borderLeft: '3px solid #ec4899' }}>
+              <span style={{ ...s.pipelineNum, color: '#ec4899' }}>P5</span>
+              <div>
+                <div style={s.pipelineName}>MS 365 Access Sync</div>
+                <div style={s.pipelineDesc}>16 Tables &amp; COM Sync</div>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* ── EXISTING INSTITUTION LOGIN SECTION ──────────────────────── */}
-        <section id="existing-login" style={s.loginSection}>
+        {/* ── PIPELINE 2: MULTI-PORTAL GATEWAY & CAMPUS ACCESS ────────── */}
+        <section id="campus-gateway" style={s.loginSection}>
           <div style={s.sectionHead}>
-            <div style={s.badgeLabel}>
-              <School size={15} color="#16a34a" />
-              <span>CAMPUS GATEWAY</span>
+            <div style={{ ...s.badgeLabel, color: '#38bdf8' }}>
+              <School size={15} color="#38bdf8" />
+              <span>PIPELINE 2: MULTI-PORTAL GATEWAY</span>
             </div>
-            <h2 style={s.sectionTitle}>Existing Institution Login</h2>
+            <h2 style={s.sectionTitle}>Campus Multi-Portal Gateway</h2>
             <p style={s.sectionSubtitle}>
-              Select your university to sign in to your institution's SPSEMS portal, submit project milestones,
-              and manage supervision.
+              Select your institution to access the 3 specialized academic portals:
+              <strong> SPSEMS Dissertation Supervision</strong>, <strong>SIWES Industrial Attachment</strong>, and <strong>Hostel Accommodation</strong>.
             </p>
           </div>
 
@@ -139,13 +158,13 @@ export default function PlatformLandingPage() {
             <input
               style={s.searchInput}
               type="text"
-              placeholder="Search your university or polytechnic (e.g. KWASU, UNILAG, Ibadan)..."
+              placeholder="Search your university or polytechnic (e.g. KWASU, UNILORIN, UI, OAU)..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
 
-          {/* FEATURED: KWASU SPSEMS (LIVE PRIMARY NODE) */}
+          {/* FEATURED: KWASU MULTI-PORTAL GATEWAY (LIVE PRIMARY NODE) */}
           <div style={s.featuredKwasuCard}>
             <div style={s.featuredHeader}>
               <div style={s.featuredLogoWrap}>
@@ -157,7 +176,7 @@ export default function PlatformLandingPage() {
                     <span style={s.livePulse} />
                     <span style={s.featuredStatus}>LIVE &amp; OPERATIONAL (100% Active)</span>
                   </div>
-                  <h3 style={s.featuredName}>Kwara State University (KWASU SPSEMS)</h3>
+                  <h3 style={s.featuredName}>Kwara State University (KWASU Campus Gateway)</h3>
                   <div style={s.featuredMeta}>
                     <span>Domain: <b>kwasu.edu.ng</b></span>
                     <span>•</span>
@@ -169,27 +188,91 @@ export default function PlatformLandingPage() {
               </div>
 
               <div style={s.featuredActionWrap}>
-                <Link to="/login" style={s.kwasuLoginBtn}>
-                  <Lock size={16} />
-                  <span>Enter KWASU SPSEMS Login</span>
-                  <ArrowRight size={16} />
-                </Link>
+                <span style={{ fontSize: 12, color: '#9ca3af', fontWeight: 600 }}>Active Instance:</span>
+                <span style={{ fontSize: 12, color: '#22c55e', background: 'rgba(34,197,94,0.1)', padding: '4px 10px', borderRadius: 6, fontWeight: 700 }}>
+                  KWASU-GATEWAY-2026
+                </span>
               </div>
             </div>
 
             <div style={s.featuredDivider} />
 
+            {/* 3 Specialized Portal Gateways Row */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: '0.6px', textTransform: 'uppercase', marginBottom: 12 }}>
+                SELECT A SPECIALIZED PORTAL GATEWAY:
+              </div>
+              <div style={s.portalsGrid}>
+                {/* Portal 1: SPSEMS */}
+                <div style={s.portalCard}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                    <div style={{ ...s.portalIconCircle, background: 'rgba(34,197,94,0.15)', color: '#22c55e' }}>
+                      <Layers size={18} />
+                    </div>
+                    <div>
+                      <div style={s.portalBadge}>GATEWAY: SPSEMS-01</div>
+                      <h4 style={s.portalTitle}>SPSEMS Portal</h4>
+                    </div>
+                  </div>
+                  <p style={s.portalDesc}>
+                    Thesis, dissertation &amp; project supervision with AI milestone tracking and postgraduate dual-supervision.
+                  </p>
+                  <Link to="/login" style={{ ...s.portalLaunchBtn, background: '#16a34a' }}>
+                    <Lock size={13} />
+                    <span>Enter SPSEMS</span>
+                    <ArrowRight size={13} />
+                  </Link>
+                </div>
+
+                {/* Portal 2: SIWES */}
+                <div style={s.portalCard}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                    <div style={{ ...s.portalIconCircle, background: 'rgba(56,189,248,0.15)', color: '#38bdf8' }}>
+                      <Briefcase size={18} />
+                    </div>
+                    <div>
+                      <div style={{ ...s.portalBadge, color: '#38bdf8' }}>GATEWAY: SIWES-02</div>
+                      <h4 style={s.portalTitle}>SIWES / IT Placement</h4>
+                    </div>
+                  </div>
+                  <p style={s.portalDesc}>
+                    Students Industrial Work Experience Scheme (SIWES), weekly e-logbook verification, and field evaluations.
+                  </p>
+                  <Link to="/portal/kwasu/siwes" style={{ ...s.portalLaunchBtn, background: '#0284c7' }}>
+                    <Briefcase size={13} />
+                    <span>Enter SIWES</span>
+                    <ArrowRight size={13} />
+                  </Link>
+                </div>
+
+                {/* Portal 3: HOSTEL */}
+                <div style={s.portalCard}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                    <div style={{ ...s.portalIconCircle, background: 'rgba(168,85,247,0.15)', color: '#a855f7' }}>
+                      <Home size={18} />
+                    </div>
+                    <div>
+                      <div style={{ ...s.portalBadge, color: '#a855f7' }}>GATEWAY: HOSTEL-03</div>
+                      <h4 style={s.portalTitle}>Hostel Allocation</h4>
+                    </div>
+                  </div>
+                  <p style={s.portalDesc}>
+                    Campus residence hall selection, real-time bedspace reservations, balloting, and hall warden clearance.
+                  </p>
+                  <Link to="/portal/kwasu/hostel" style={{ ...s.portalLaunchBtn, background: '#7e22ce' }}>
+                    <Home size={13} />
+                    <span>Enter Hostel</span>
+                    <ArrowRight size={13} />
+                  </Link>
+                </div>
+              </div>
+            </div>
+
             <div style={s.featuredBody}>
               <div style={s.featuredDescCol}>
-                <p style={s.featuredDesc}>
-                  Access your KWASU project supervision portal. Features automated allocation for undergraduate
-                  and postgraduate (MSc / PhD dual-supervision), plagiarism checking, milestone submissions,
-                  and defense evaluation.
-                </p>
-
                 {/* Quick Registration Links */}
                 <div style={s.quickRegRow}>
-                  <span style={s.quickRegLabel}>Direct Registration:</span>
+                  <span style={s.quickRegLabel}>KWASU Direct Registration:</span>
                   <Link to="/register" style={s.quickRegBtn}>
                     <GraduationCap size={13} />
                     <span>Student Registration</span>
@@ -236,11 +319,11 @@ export default function PlatformLandingPage() {
           <div style={s.otherSchoolsSection}>
             <div style={s.otherSchoolsHead}>
               <h3 style={s.otherSchoolsTitle}>
-                Registered Institutions Directory ({filteredSchools.length})
+                Other Registered Institutions ({filteredSchools.length})
               </h3>
-              <Link to="/onboard" style={s.addSchoolLink}>
-                + Onboard New Institution
-              </Link>
+              <a href="#institution-onboarding" style={s.addSchoolLink}>
+                + Onboard New Institution (Pipeline 3)
+              </a>
             </div>
 
             <div style={s.schoolsGrid}>
@@ -292,7 +375,7 @@ export default function PlatformLandingPage() {
                         }}
                       />
                       <span style={s.statusText}>
-                        {inst.status === 'active' ? 'Active Portal' : 'Configuring'}
+                        {inst.status === 'active' ? 'Active Gateway' : 'Configuring'}
                       </span>
                     </div>
 
@@ -303,7 +386,7 @@ export default function PlatformLandingPage() {
                         background: inst.primary_color || '#16a34a',
                       }}
                     >
-                      <span>Sign In</span>
+                      <span>Open Gateway</span>
                       <ChevronRight size={14} />
                     </Link>
                   </div>
@@ -313,8 +396,96 @@ export default function PlatformLandingPage() {
           </div>
         </section>
 
-        {/* ── SYSTEM CAPABILITIES & VALUE PILLARS ─────────────────────── */}
+        {/* ── PIPELINE 3: INSTITUTIONAL ONBOARDING & ACADEMIC SETUP ─── */}
+        <section id="institution-onboarding" style={s.onboardSection}>
+          <div style={s.sectionHead}>
+            <div style={{ ...s.badgeLabel, color: '#f59e0b' }}>
+              <Building2 size={15} color="#f59e0b" />
+              <span>PIPELINE 3: INSTITUTIONAL ONBOARDING &amp; SETUP</span>
+            </div>
+            <h2 style={s.sectionTitle}>Institutional Self-Onboarding &amp; Provisioning</h2>
+            <p style={s.sectionSubtitle}>
+              Empowering universities and polytechnics to self-provision dedicated multi-tenant instances on the national platform.
+            </p>
+          </div>
+
+          {/* Primary Onboarding Callout Card */}
+          <div style={s.heroOnboardCard}>
+            <div style={s.heroOnboardLeft}>
+              <div style={s.onboardIconBadge}>
+                <Building2 size={32} color="#f59e0b" />
+              </div>
+              <div style={s.onboardTextGroup}>
+                <div style={{ ...s.onboardPre, color: '#f59e0b' }}>AUTONOMOUS CAMPUS ONBOARDING</div>
+                <h2 style={s.onboardTitle}>Are you an Academic Institution?</h2>
+                <p style={s.onboardDesc}>
+                  Onboard your university or polytechnic onto SPSEMS in minutes. Upload your official emblem to
+                  automatically extract your custom brand colors, customize degree policies &amp; postgraduate
+                  dual-supervisor regulations, and instantly provision an isolated tenant for your campus.
+                </p>
+                <div style={s.featurePillRow}>
+                  <span style={{ ...s.featurePill, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Sparkles size={13} color="#f59e0b" /> Instant Logo Color Extraction
+                  </span>
+                  <span style={{ ...s.featurePill, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <GraduationCap size={13} color="#f59e0b" /> MSc &amp; PhD Dual Supervision
+                  </span>
+                  <span style={{ ...s.featurePill, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Lock size={13} color="#f59e0b" /> Isolated Tenant Database
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div style={s.heroOnboardRight}>
+              <Link to="/onboard" style={{ ...s.heroCtaBtn, background: '#d97706' }}>
+                <span>Onboard Your University</span>
+                <ArrowRight size={18} />
+              </Link>
+              <span style={s.ctaNote}>Free institutional setup • 7-stage automated pipeline</span>
+            </div>
+          </div>
+
+          {/* 7-Stage Onboarding Pipeline Roadmap Preview */}
+          <div style={{ marginTop: 24 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#9ca3af', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+              THE 7-STAGE INSTITUTIONAL PROVISIONING LIFECYCLE:
+            </div>
+            <div style={s.stagesGrid}>
+              {[
+                { step: '1', title: 'Registration & Domain', desc: 'School details & official .edu domain' },
+                { step: '2', title: 'Emblem & Color Engine', desc: 'Logo upload & automatic palette extraction' },
+                { step: '3', title: 'Domain Verification', desc: 'DNS TXT / Token handshake security' },
+                { step: '4', title: 'Tenant Schema Provision', desc: 'Row-Level Security & storage bucket setup' },
+                { step: '5', title: 'Faculties & Departments', desc: 'Academic tree & HOD directory configuration' },
+                { step: '6', title: 'Staff Roster Ingestion', desc: 'CSV batch import of faculty supervisors' },
+                { step: '7', title: 'Dual Supervision & Live', desc: 'MSc/PhD policies & portal gateway launch' },
+              ].map((st) => (
+                <div key={st.step} style={s.stageItem}>
+                  <div style={s.stageNumber}>{st.step}</div>
+                  <div>
+                    <div style={s.stageTitle}>{st.title}</div>
+                    <div style={s.stageDesc}>{st.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── SYSTEM CAPABILITIES & 5-PIPELINE ARCHITECTURE ───────────── */}
         <section style={s.featuresSection}>
+          <div style={{ textAlign: 'center', marginBottom: 28 }}>
+            <div style={{ ...s.badgeLabel, color: '#22c55e' }}>
+              <Layers size={15} color="#22c55e" />
+              <span>FULL SYSTEM PIPELINE ARCHITECTURE</span>
+            </div>
+            <h3 style={s.sectionTitle}>Built for Nationwide Institutional Scale</h3>
+            <p style={s.sectionSubtitle}>
+              From unified public discovery to autonomous machine learning retraining and Microsoft Access integration.
+            </p>
+          </div>
+
           <div style={s.featuresGrid}>
             <div style={s.featureBox}>
               <div style={s.featureIconCircle}>
@@ -377,10 +548,10 @@ export default function PlatformLandingPage() {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 13 }}>
             <Link to="/onboard" style={{ color: '#22c55e', textDecoration: 'none', fontWeight: 600 }}>
-              Onboard Institution
+              Onboard Institution (P3)
             </Link>
             <Link to="/login" style={{ color: 'var(--text-muted, #9ca3af)', textDecoration: 'none' }}>
-              KWASU Portal
+              KWASU Gateway (P2)
             </Link>
           </div>
         </div>
@@ -486,7 +657,7 @@ const s = {
     marginBottom: 20,
   },
   heroHeading: {
-    fontSize: 40,
+    fontSize: 38,
     fontWeight: 800,
     letterSpacing: '-0.8px',
     margin: '0 auto 16px',
@@ -495,111 +666,91 @@ const s = {
     color: 'var(--text-primary, #ffffff)',
   },
   heroSubheading: {
-    fontSize: 16,
+    fontSize: 15,
     color: 'var(--text-muted, #9ca3af)',
     maxWidth: 760,
-    margin: '0 auto 36px',
+    margin: '0 auto 28px',
     lineHeight: 1.6,
   },
-  heroOnboardCard: {
-    background: 'linear-gradient(135deg, rgba(22,163,74,0.14) 0%, rgba(15,23,42,0.6) 100%)',
-    border: '2px solid rgba(22,163,74,0.4)',
-    borderRadius: 20,
-    padding: '36px 40px',
+  heroActionRow: {
     display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 32,
-    textAlign: 'left',
-    boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
-    flexWrap: 'wrap',
-  },
-  heroOnboardLeft: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: 20,
-    flex: 1,
-    minWidth: 320,
-  },
-  onboardIconBadge: {
-    width: 60,
-    height: 60,
-    borderRadius: 16,
-    background: 'rgba(22,163,74,0.2)',
-    border: '1px solid rgba(22,163,74,0.4)',
-    display: 'flex',
-    alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0,
-  },
-  onboardTextGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 6,
-  },
-  onboardPre: {
-    fontSize: 11,
-    fontWeight: 700,
-    color: '#22c55e',
-    letterSpacing: '0.8px',
-  },
-  onboardTitle: {
-    fontSize: 26,
-    fontWeight: 800,
-    margin: 0,
-    color: 'var(--text-primary, #ffffff)',
-    letterSpacing: '-0.4px',
-  },
-  onboardDesc: {
-    fontSize: 14,
-    color: 'var(--text-secondary, #e5e7eb)',
-    margin: 0,
-    lineHeight: 1.5,
-    maxWidth: 620,
-  },
-  featurePillRow: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 8,
-  },
-  featurePill: {
-    fontSize: 11,
-    fontWeight: 600,
-    color: 'var(--text-primary, #ffffff)',
-    background: 'rgba(255,255,255,0.08)',
-    border: '1px solid rgba(255,255,255,0.12)',
-    padding: '3px 10px',
-    borderRadius: 999,
-  },
-  heroOnboardRight: {
-    display: 'flex',
-    flexDirection: 'column',
     alignItems: 'center',
-    gap: 10,
-    flexShrink: 0,
+    gap: 14,
+    marginBottom: 36,
+    flexWrap: 'wrap',
   },
-  heroCtaBtn: {
+  heroPrimaryBtn: {
     display: 'inline-flex',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     background: '#16a34a',
     color: '#ffffff',
-    padding: '16px 32px',
-    borderRadius: 12,
-    fontSize: 16,
-    fontWeight: 800,
+    padding: '12px 24px',
+    borderRadius: 10,
+    fontSize: 14,
+    fontWeight: 700,
     textDecoration: 'none',
-    boxShadow: '0 8px 24px rgba(22,163,74,0.4)',
-    transition: 'transform 0.15s ease, background 0.15s ease',
+    boxShadow: '0 4px 16px rgba(22,163,74,0.3)',
   },
-  ctaNote: {
-    fontSize: 11,
-    color: 'var(--text-muted, #9ca3af)',
+  heroSecondaryBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 8,
+    background: 'rgba(255,255,255,0.06)',
+    border: '1px solid rgba(255,255,255,0.12)',
+    color: 'var(--text-primary, #ffffff)',
+    padding: '12px 24px',
+    borderRadius: 10,
+    fontSize: 14,
+    fontWeight: 700,
+    textDecoration: 'none',
+  },
+  pipelineMasterBar: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+    gap: 12,
+    padding: '16px',
+    background: 'rgba(255,255,255,0.02)',
+    border: '1px solid rgba(255,255,255,0.06)',
+    borderRadius: 12,
+    textAlign: 'left',
+  },
+  pipelineStep: {
+    background: 'rgba(0,0,0,0.3)',
+    border: '1px solid rgba(255,255,255,0.05)',
+    borderRadius: 8,
+    padding: '10px 12px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+  },
+  pipelineNum: {
+    fontSize: 12,
+    fontWeight: 800,
+    color: '#22c55e',
+    background: 'rgba(255,255,255,0.05)',
+    padding: '4px 8px',
+    borderRadius: 6,
+  },
+  pipelineName: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: 'var(--text-primary, #ffffff)',
+  },
+  pipelineDesc: {
+    fontSize: 10,
+    color: 'var(--text-dim, #6b7280)',
   },
   loginSection: {
+    marginTop: 20,
+    marginBottom: 60,
+  },
+  onboardSection: {
     marginTop: 40,
     marginBottom: 60,
+    paddingTop: 30,
+    borderTop: '1px solid var(--border-subtle, rgba(255,255,255,0.08))',
   },
   sectionHead: {
     textAlign: 'center',
@@ -611,7 +762,6 @@ const s = {
     gap: 6,
     fontSize: 11,
     fontWeight: 700,
-    color: '#16a34a',
     letterSpacing: '0.8px',
     marginBottom: 8,
   },
@@ -626,6 +776,9 @@ const s = {
     fontSize: 14,
     color: 'var(--text-muted, #9ca3af)',
     margin: 0,
+    maxWidth: 720,
+    marginLeft: 'auto',
+    marginRight: 'auto',
   },
   searchWrap: {
     position: 'relative',
@@ -717,25 +870,66 @@ const s = {
   featuredActionWrap: {
     display: 'flex',
     alignItems: 'center',
-    gap: 12,
-  },
-  kwasuLoginBtn: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 8,
-    background: '#16a34a',
-    color: '#ffffff',
-    padding: '12px 24px',
-    borderRadius: 10,
-    fontSize: 14,
-    fontWeight: 700,
-    textDecoration: 'none',
-    boxShadow: '0 4px 16px rgba(22,163,74,0.3)',
+    gap: 10,
   },
   featuredDivider: {
     height: 1,
     background: 'var(--border-subtle, rgba(255,255,255,0.08))',
     margin: '20px 0',
+  },
+  portalsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+    gap: 14,
+  },
+  portalCard: {
+    background: 'rgba(0,0,0,0.3)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: 12,
+    padding: '16px 18px',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  },
+  portalIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 9,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  portalBadge: {
+    fontSize: 9,
+    fontWeight: 800,
+    color: '#22c55e',
+    letterSpacing: '0.6px',
+    textTransform: 'uppercase',
+  },
+  portalTitle: {
+    fontSize: 14,
+    fontWeight: 700,
+    margin: '2px 0 0',
+    color: 'var(--text-primary, #ffffff)',
+  },
+  portalDesc: {
+    fontSize: 12,
+    color: 'var(--text-muted, #9ca3af)',
+    lineHeight: 1.45,
+    margin: '0 0 14px',
+    minHeight: 36,
+  },
+  portalLaunchBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    color: '#ffffff',
+    padding: '8px 14px',
+    borderRadius: 8,
+    fontSize: 12,
+    fontWeight: 700,
+    textDecoration: 'none',
   },
   featuredBody: {
     display: 'flex',
@@ -747,12 +941,6 @@ const s = {
   featuredDescCol: {
     flex: 1,
     minWidth: 300,
-  },
-  featuredDesc: {
-    fontSize: 13,
-    color: 'var(--text-secondary, #e5e7eb)',
-    lineHeight: 1.6,
-    margin: '0 0 16px',
   },
   quickRegRow: {
     display: 'flex',
@@ -943,6 +1131,138 @@ const s = {
     fontSize: 12,
     fontWeight: 700,
     textDecoration: 'none',
+  },
+  heroOnboardCard: {
+    background: 'linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(15,23,42,0.6) 100%)',
+    border: '2px solid rgba(245,158,11,0.35)',
+    borderRadius: 20,
+    padding: '36px 40px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 32,
+    textAlign: 'left',
+    boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
+    flexWrap: 'wrap',
+  },
+  heroOnboardLeft: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 20,
+    flex: 1,
+    minWidth: 320,
+  },
+  onboardIconBadge: {
+    width: 60,
+    height: 60,
+    borderRadius: 16,
+    background: 'rgba(245,158,11,0.15)',
+    border: '1px solid rgba(245,158,11,0.3)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  onboardTextGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+  },
+  onboardPre: {
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: '0.8px',
+  },
+  onboardTitle: {
+    fontSize: 26,
+    fontWeight: 800,
+    margin: 0,
+    color: 'var(--text-primary, #ffffff)',
+    letterSpacing: '-0.4px',
+  },
+  onboardDesc: {
+    fontSize: 14,
+    color: 'var(--text-secondary, #e5e7eb)',
+    margin: 0,
+    lineHeight: 1.5,
+    maxWidth: 620,
+  },
+  featurePillRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  featurePill: {
+    fontSize: 11,
+    fontWeight: 600,
+    color: 'var(--text-primary, #ffffff)',
+    background: 'rgba(255,255,255,0.08)',
+    border: '1px solid rgba(255,255,255,0.12)',
+    padding: '3px 10px',
+    borderRadius: 999,
+  },
+  heroOnboardRight: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 10,
+    flexShrink: 0,
+  },
+  heroCtaBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 10,
+    color: '#ffffff',
+    padding: '16px 32px',
+    borderRadius: 12,
+    fontSize: 16,
+    fontWeight: 800,
+    textDecoration: 'none',
+    boxShadow: '0 8px 24px rgba(245,158,11,0.3)',
+    transition: 'transform 0.15s ease, background 0.15s ease',
+  },
+  ctaNote: {
+    fontSize: 11,
+    color: 'var(--text-muted, #9ca3af)',
+  },
+  stagesGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gap: 12,
+  },
+  stageItem: {
+    background: 'rgba(0,0,0,0.3)',
+    border: '1px solid rgba(255,255,255,0.06)',
+    borderRadius: 10,
+    padding: '12px 14px',
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  stageNumber: {
+    width: 24,
+    height: 24,
+    borderRadius: '50%',
+    background: 'rgba(245,158,11,0.2)',
+    color: '#f59e0b',
+    fontSize: 11,
+    fontWeight: 800,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  stageTitle: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: 'var(--text-primary, #ffffff)',
+    marginBottom: 2,
+  },
+  stageDesc: {
+    fontSize: 11,
+    color: 'var(--text-dim, #6b7280)',
+    lineHeight: 1.4,
   },
   featuresSection: {
     marginTop: 40,
