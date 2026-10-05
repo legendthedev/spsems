@@ -174,6 +174,46 @@ export default function HostelPortal() {
           </div>
         </div>
 
+        {/* Institutional Staging Notification Banner */}
+        <div style={{
+          margin: '12px 24px',
+          padding: '12px 18px',
+          borderRadius: 10,
+          background: 'rgba(245, 158, 11, 0.1)',
+          border: '1px solid rgba(245, 158, 11, 0.35)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 4, background: '#d97706', color: '#fff' }}>
+              NOT IMPLEMENTED YET
+            </span>
+            <span style={{ fontSize: 12, color: 'var(--text-primary, #fff)', fontWeight: 600 }}>
+              Institutional Hostel Bedspace module is staged for Phase 2 implementation. Single Sign-On surname authentication is pre-mapped.
+            </span>
+          </div>
+          <Link
+            to={`/login/${institution.slug}/spsems`}
+            style={{
+              padding: '5px 12px',
+              borderRadius: 6,
+              background: primaryColor,
+              color: '#fff',
+              fontSize: 11,
+              fontWeight: 700,
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4
+            }}
+          >
+            <span>Enter Active SPSEMS Portal &gt;</span>
+          </Link>
+        </div>
+
         {/* Navigation Tabs */}
         <div style={s.tabBar}>
           {[

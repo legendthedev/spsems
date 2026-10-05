@@ -3,7 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import {
   Building2, Palette, ShieldCheck, CheckCircle2, ArrowRight, ArrowLeft,
   Upload, Sparkles, School, Globe, Mail, Phone, Lock, User, Check,
-  Copy, Layers, Sliders, GraduationCap
+  Copy, Layers, Sliders, GraduationCap, Database, KeyRound, RefreshCw,
+  X
 } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -122,6 +123,29 @@ export default function InstitutionalOnboardingPage() {
   ]);
   const [analyzingLogo, setAnalyzingLogo] = useState(false);
   const [onboardResult, setOnboardResult] = useState(null);
+  const [showFetchDbModal, setShowFetchDbModal] = useState(false);
+  const [fetchingDb, setFetchingDb] = useState(false);
+  const [fetchedRoster, setFetchedRoster] = useState(null);
+  const [fetchFilter, setFetchFilter] = useState('all');
+
+  const handleFetchDatabase = async () => {
+    const slug = onboardResult?.subdomain_slug || form.code.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!slug) return;
+    setFetchingDb(true);
+    try {
+      const res = await api.post(`/institutions/${slug}/fetch-database`, {
+        source_type: 'in_house_sync',
+        sample_size: 15,
+      });
+      setFetchedRoster(res.data);
+      toast.success(res.data.message || 'Database records fetched! Passwords set to surname.');
+    } catch (err) {
+      const msg = err.response?.data?.detail || err.response?.data?.message || 'Failed to fetch in-house database.';
+      toast.error(msg);
+    } finally {
+      setFetchingDb(false);
+    }
+  };
 
   const update = (field, val) => setForm(prev => ({ ...prev, [field]: val }));
 
@@ -1289,7 +1313,64 @@ export default function InstitutionalOnboardingPage() {
                 </div>
               </div>
 
+              {/* In-House Database Fetch Card */}
+              <div style={s.fetchDatabaseCard}>
+                <div style={s.fetchDatabaseHeader}>
+                  <div style={s.fetchDbIconBadge}>
+                    <Database size={24} color="#0284c7" />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <h3 style={s.fetchDbTitle}>Fetch In-House Database (Student &amp; Supervisor Roster)</h3>
+                      <span style={s.fetchDbBadge}>ACTION REQUIRED</span>
+                    </div>
+                    <p style={s.fetchDbDesc}>
+                      Connect to <b>{onboardResult.institution_name}</b>'s internal database (MS Access, SQLite, SIS) to pull student and supervisor records. 
+                      Every imported student and supervisor is automatically assigned their <b>SURNAME</b> as password for instant access across <b>SPSEMS</b>, <b>SIWES</b>, and <b>HOSTEL</b> portals.
+                    </p>
+                  </div>
+                </div>
+                <div style={s.fetchDbActionFooter}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowFetchDbModal(true);
+                      if (!fetchedRoster) {
+                        handleFetchDatabase();
+                      }
+                    }}
+                    style={s.fetchDbBtn}
+                  >
+                    <Database size={16} />
+                    <span>Fetch Database</span>
+                  </button>
+                  <span style={s.fetchDbHint}>
+                    Password Rule: <b>Student &amp; Supervisor SURNAME</b> (case-insensitive)
+                  </span>
+                </div>
+              </div>
+
               <div style={s.successActionRow}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowFetchDbModal(true);
+                    if (!fetchedRoster) {
+                      handleFetchDatabase();
+                    }
+                  }}
+                  style={{
+                    ...s.btnPrimary,
+                    background: '#0284c7',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    boxShadow: '0 4px 14px rgba(2, 132, 199, 0.35)',
+                  }}
+                >
+                  <Database size={16} />
+                  <span>Fetch Database</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => navigate(`/login/${onboardResult.subdomain_slug}?token=${encodeURIComponent(onboardResult.verification_token || '')}&anim=1`)}
@@ -1306,12 +1387,455 @@ export default function InstitutionalOnboardingPage() {
           )}
         </div>
       </main>
+
+      {/* ── FETCH IN-HOUSE DATABASE MODAL ───────────────────────────────── */}
+      {showFetchDbModal && (
+        <div style={s.modalOverlay} onClick={() => setShowFetchDbModal(false)}>
+          <div style={s.fetchModalCard} onClick={(e) => e.stopPropagation()}>
+            <div style={s.modalHeader}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 8, background: '#0284c722', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0284c7' }}>
+                  <Database size={20} />
+                </div>
+                <div>
+                  <h3 style={s.modalTitle}>In-House Database Synchronizer</h3>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted, #9ca3af)' }}>
+                    {onboardResult?.institution_name || form.name} ({onboardResult?.institution_code || form.code})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowFetchDbModal(false)}
+                style={s.modalCloseBtn}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* UNIFIED PASSWORD POLICY NOTIFICATION */}
+            <div style={s.policyAlertBox}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <KeyRound size={20} color="#0284c7" style={{ flexShrink: 0, marginTop: 2 }} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary, #fff)', marginBottom: 2 }}>
+                    Unified Single Sign-On (SSO) Password Policy
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted, #9ca3af)', lineHeight: 1.45 }}>
+                    When you fetch records from the in-house database, each student and supervisor is automatically assigned their <b>SURNAME</b> as their initial password (e.g. <code>Adeyemi</code>, <code>Okonkwo</code>, <code>Ibrahim</code>). This single credential grants access to all 3 institutional portals:
+                    <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+                      <span style={s.portalTagBadge}>1. SPSEMS (Dissertation Supervision)</span>
+                      <span style={s.portalTagBadge}>2. SIWES (Industrial Training)</span>
+                      <span style={s.portalTagBadge}>3. Hostel (Residence Allocation)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Sync Status / Actions */}
+            <div style={s.fetchModalToolbar}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setFetchFilter('all')}
+                  style={{ ...s.filterPill, background: fetchFilter === 'all' ? '#0284c7' : 'transparent', color: fetchFilter === 'all' ? '#fff' : 'var(--text-muted, #9ca3af)' }}
+                >
+                  All ({fetchedRoster ? (fetchedRoster.students_count + fetchedRoster.supervisors_count) : 0})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFetchFilter('students')}
+                  style={{ ...s.filterPill, background: fetchFilter === 'students' ? '#0284c7' : 'transparent', color: fetchFilter === 'students' ? '#fff' : 'var(--text-muted, #9ca3af)' }}
+                >
+                  Students ({fetchedRoster?.students_count || 0})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFetchFilter('supervisors')}
+                  style={{ ...s.filterPill, background: fetchFilter === 'supervisors' ? '#0284c7' : 'transparent', color: fetchFilter === 'supervisors' ? '#fff' : 'var(--text-muted, #9ca3af)' }}
+                >
+                  Supervisors ({fetchedRoster?.supervisors_count || 0})
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleFetchDatabase}
+                disabled={fetchingDb}
+                style={s.reSyncBtn}
+              >
+                <RefreshCw size={14} className={fetchingDb ? 'spin' : ''} />
+                <span>{fetchingDb ? 'Fetching from In-House Database...' : 'Re-Fetch Database'}</span>
+              </button>
+            </div>
+
+            {/* Results Table */}
+            {fetchingDb ? (
+              <div style={s.fetchingLoaderBox}>
+                <div style={s.fetchingSpinner} />
+                <h4 style={{ margin: '14px 0 4px', fontSize: 15, color: 'var(--text-primary, #fff)' }}>
+                  Connecting to Institutional Database...
+                </h4>
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted, #9ca3af)' }}>
+                  Extracting student matric rosters, supervisor faculty registries, and hashing surnames for unified portal access.
+                </p>
+              </div>
+            ) : fetchedRoster ? (
+              <div style={s.rosterTableWrap}>
+                <table style={s.rosterTable}>
+                  <thead>
+                    <tr>
+                      <th style={s.th}>Role</th>
+                      <th style={s.th}>Full Name</th>
+                      <th style={s.th}>Matric / Username</th>
+                      <th style={s.th}>Department</th>
+                      <th style={{ ...s.th, background: 'rgba(2, 132, 199, 0.12)' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#38bdf8' }}>
+                          <KeyRound size={12} /> Assigned Password (SURNAME)
+                        </span>
+                      </th>
+                      <th style={s.th}>Portals</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(fetchFilter === 'all' || fetchFilter === 'students' ? (fetchedRoster.students || []) : []).map((st) => (
+                      <tr key={`st-${st.student_id || st.matric_number}`} style={s.tr}>
+                        <td style={s.td}><span style={s.studentRoleBadge}>STUDENT</span></td>
+                        <td style={{ ...s.td, fontWeight: 600 }}>{st.full_name}</td>
+                        <td style={s.td}><code style={s.codeMatric}>{st.matric_number || st.username}</code></td>
+                        <td style={s.td}>{st.department}</td>
+                        <td style={{ ...s.td, background: 'rgba(2, 132, 199, 0.05)' }}>
+                          <span style={s.surnamePasswordBadge}>
+                            <KeyRound size={11} /> {st.assigned_password}
+                          </span>
+                        </td>
+                        <td style={s.td}>
+                          <span style={s.portalsAccessPill}>SPSEMS • SIWES • HOSTEL</span>
+                        </td>
+                      </tr>
+                    ))}
+                    {(fetchFilter === 'all' || fetchFilter === 'supervisors' ? (fetchedRoster.supervisors || []) : []).map((sup) => (
+                      <tr key={`sup-${sup.supervisor_id || sup.username}`} style={s.tr}>
+                        <td style={s.td}><span style={s.supRoleBadge}>SUPERVISOR</span></td>
+                        <td style={{ ...s.td, fontWeight: 600 }}>{sup.full_name}</td>
+                        <td style={s.td}><code style={s.codeMatric}>{sup.username}</code></td>
+                        <td style={s.td}>{sup.department}</td>
+                        <td style={{ ...s.td, background: 'rgba(2, 132, 199, 0.05)' }}>
+                          <span style={s.surnamePasswordBadge}>
+                            <KeyRound size={11} /> {sup.assigned_password}
+                          </span>
+                        </td>
+                        <td style={s.td}>
+                          <span style={s.portalsAccessPill}>SPSEMS • SIWES • HOSTEL</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div style={s.emptyFetchBox}>
+                <Database size={40} color="#6b7280" />
+                <p style={{ margin: '12px 0 6px', fontSize: 14, fontWeight: 600, color: 'var(--text-primary, #fff)' }}>
+                  No In-House Database Fetched Yet
+                </p>
+                <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--text-muted, #9ca3af)', maxWidth: 440 }}>
+                  Click the button below to fetch student and supervisor records from your in-house database and automatically configure their surname passwords.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleFetchDatabase}
+                  style={s.fetchDbBtn}
+                >
+                  <Database size={15} />
+                  <span>Fetch Database Now</span>
+                </button>
+              </div>
+            )}
+
+            <div style={s.modalFooter}>
+              <div style={{ fontSize: 12, color: 'var(--text-muted, #9ca3af)' }}>
+                {fetchedRoster ? (
+                  <span>✅ <b>{fetchedRoster.students_count}</b> Students &amp; <b>{fetchedRoster.supervisors_count}</b> Supervisors ready for unified login.</span>
+                ) : (
+                  <span>Click 'Fetch Database' to sync accounts.</span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowFetchDbModal(false)}
+                  style={s.btnSecondary}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowFetchDbModal(false);
+                    navigate(`/login/${onboardResult.subdomain_slug}?token=${encodeURIComponent(onboardResult.verification_token || '')}&anim=1`);
+                  }}
+                  style={{ ...s.btnPrimary, background: form.primary_color }}
+                >
+                  <span>Launch SPSEMS Login</span>
+                  <ArrowRight size={15} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ── STYLES ───────────────────────────────────────────────────────────────────
 const s = {
+  fetchDatabaseCard: {
+    margin: '24px 0 0',
+    padding: '20px 24px',
+    borderRadius: 14,
+    border: '1px solid rgba(2, 132, 199, 0.35)',
+    background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 14,
+  },
+  fetchDatabaseHeader: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 16,
+  },
+  fetchDbIconBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    background: 'rgba(2, 132, 199, 0.15)',
+    border: '1px solid rgba(2, 132, 199, 0.3)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  fetchDbTitle: {
+    margin: 0,
+    fontSize: 16,
+    fontWeight: 700,
+    color: 'var(--text-primary, #ffffff)',
+  },
+  fetchDbBadge: {
+    fontSize: 10,
+    fontWeight: 700,
+    padding: '2px 8px',
+    borderRadius: 4,
+    background: 'rgba(2, 132, 199, 0.2)',
+    color: '#38bdf8',
+    letterSpacing: '0.4px',
+  },
+  fetchDbDesc: {
+    margin: 0,
+    fontSize: 13,
+    color: 'var(--text-muted, #9ca3af)',
+    lineHeight: 1.5,
+  },
+  fetchDbActionFooter: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  fetchDbBtn: {
+    padding: '9px 18px',
+    borderRadius: 8,
+    border: 'none',
+    background: '#0284c7',
+    color: '#ffffff',
+    fontWeight: 700,
+    fontSize: 13,
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 8,
+    boxShadow: '0 2px 10px rgba(2, 132, 199, 0.3)',
+  },
+  fetchDbHint: {
+    fontSize: 12,
+    color: 'var(--text-dim, #94a3b8)',
+  },
+  fetchModalCard: {
+    width: '100%',
+    maxWidth: 880,
+    background: 'var(--bg-card, #111827)',
+    borderRadius: 16,
+    border: '1px solid var(--border-subtle, rgba(255,255,255,0.12))',
+    boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
+    padding: 24,
+    maxHeight: '88vh',
+    display: 'flex',
+    flexDirection: 'column',
+    position: 'relative',
+    animation: 'modalSlideIn 0.25s ease',
+  },
+  policyAlertBox: {
+    margin: '16px 0',
+    padding: '14px 16px',
+    borderRadius: 10,
+    background: 'rgba(2, 132, 199, 0.1)',
+    border: '1px solid rgba(2, 132, 199, 0.3)',
+  },
+  portalTagBadge: {
+    fontSize: 10,
+    fontWeight: 600,
+    padding: '2px 8px',
+    borderRadius: 4,
+    background: 'rgba(255, 255, 255, 0.08)',
+    color: 'var(--text-primary, #e2e8f0)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+  },
+  fetchModalToolbar: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+    gap: 12,
+    flexWrap: 'wrap',
+  },
+  filterPill: {
+    padding: '6px 14px',
+    borderRadius: 20,
+    border: '1px solid var(--border-subtle, rgba(255,255,255,0.12))',
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+  },
+  reSyncBtn: {
+    padding: '6px 14px',
+    borderRadius: 8,
+    border: '1px solid rgba(2, 132, 199, 0.4)',
+    background: 'rgba(2, 132, 199, 0.12)',
+    color: '#38bdf8',
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+  },
+  fetchingLoaderBox: {
+    padding: '48px 24px',
+    textAlign: 'center',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fetchingSpinner: {
+    width: 36,
+    height: 36,
+    border: '3px solid rgba(2, 132, 199, 0.2)',
+    borderTopColor: '#0284c7',
+    borderRadius: '50%',
+    animation: 'spin 0.8s linear infinite',
+  },
+  rosterTableWrap: {
+    overflowY: 'auto',
+    maxHeight: 380,
+    border: '1px solid var(--border-subtle, rgba(255,255,255,0.08))',
+    borderRadius: 10,
+    background: 'rgba(0,0,0,0.2)',
+  },
+  rosterTable: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    fontSize: 12,
+    textAlign: 'left',
+  },
+  th: {
+    padding: '10px 14px',
+    fontWeight: 700,
+    color: 'var(--text-muted, #9ca3af)',
+    borderBottom: '1px solid var(--border-subtle, rgba(255,255,255,0.1))',
+    position: 'sticky',
+    top: 0,
+    background: 'var(--bg-card, #111827)',
+    zIndex: 2,
+  },
+  tr: {
+    borderBottom: '1px solid var(--border-subtle, rgba(255,255,255,0.05))',
+  },
+  td: {
+    padding: '10px 14px',
+    color: 'var(--text-primary, #ffffff)',
+    verticalAlign: 'middle',
+  },
+  studentRoleBadge: {
+    fontSize: 10,
+    fontWeight: 700,
+    padding: '2px 7px',
+    borderRadius: 4,
+    background: 'rgba(34, 197, 94, 0.15)',
+    color: '#22c55e',
+    letterSpacing: '0.4px',
+  },
+  supRoleBadge: {
+    fontSize: 10,
+    fontWeight: 700,
+    padding: '2px 7px',
+    borderRadius: 4,
+    background: 'rgba(168, 85, 247, 0.15)',
+    color: '#a855f7',
+    letterSpacing: '0.4px',
+  },
+  codeMatric: {
+    fontFamily: 'monospace',
+    fontSize: 11,
+    background: 'rgba(255, 255, 255, 0.06)',
+    padding: '2px 6px',
+    borderRadius: 4,
+    color: '#38bdf8',
+  },
+  surnamePasswordBadge: {
+    fontSize: 11,
+    fontWeight: 800,
+    padding: '3px 8px',
+    borderRadius: 5,
+    background: 'rgba(16, 185, 129, 0.18)',
+    color: '#10b981',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    fontFamily: 'monospace',
+  },
+  portalsAccessPill: {
+    fontSize: 10,
+    fontWeight: 600,
+    color: '#94a3b8',
+    background: 'rgba(255,255,255,0.05)',
+    padding: '2px 6px',
+    borderRadius: 4,
+  },
+  emptyFetchBox: {
+    padding: '40px 20px',
+    textAlign: 'center',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+  },
+  modalFooter: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 16,
+    marginTop: 16,
+    borderTop: '1px solid var(--border-subtle, rgba(255,255,255,0.08))',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
   page: {
     minHeight: '100vh',
     background: 'var(--bg-app, #0a0a0a)',

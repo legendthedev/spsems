@@ -17,6 +17,8 @@ __pycache__/
 # Database & Uploads
 *.db
 backend/spsems.db
+*.bak*
+*.bak_pre_clear
 uploads/
 backend/uploads/
 

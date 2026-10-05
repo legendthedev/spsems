@@ -17,7 +17,23 @@ def _hash_pw(password: str) -> str:
     return _bcrypt.hashpw(password[:72].encode(), _bcrypt.gensalt()).decode()
 
 def _verify_pw(plain: str, hashed: str) -> bool:
-    return _bcrypt.checkpw(plain[:72].encode(), hashed.encode())
+    if not plain or not hashed:
+        return False
+    # 1. Exact match
+    try:
+        if _bcrypt.checkpw(plain[:72].encode(), hashed.encode()):
+            return True
+    except Exception:
+        pass
+    # 2. Case-insensitive surname variations (lowercase, uppercase, capitalized, stripped)
+    variants = [plain.strip(), plain.lower(), plain.upper(), plain.capitalize()]
+    for var in variants:
+        try:
+            if _bcrypt.checkpw(var[:72].encode(), hashed.encode()):
+                return True
+        except Exception:
+            pass
+    return False
 
 
 def _audit(db: Session, user_id, username, role, action, ip, ok: bool):

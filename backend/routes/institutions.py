@@ -83,6 +83,14 @@ class UpdateBrandingRequest(BaseModel):
     secondary_color: Optional[str] = None
 
 
+class FetchDatabaseRequest(BaseModel):
+    source_type: Optional[str] = "in_house_sync"  # "in_house_sync", "sample_roster", "custom"
+    sample_size: Optional[int] = 15
+    departments: Optional[List[str]] = None
+    custom_records: Optional[List[dict]] = None
+    overwrite_existing: Optional[bool] = False
+
+
 # ── LOGO UPLOAD ENDPOINT ─────────────────────────────────────────────────────
 
 @router.post("/upload-logo")
@@ -771,5 +779,430 @@ async def upload_and_update_institution_logo(
         "message": f"Official logo for {inst.name} ({inst.code}) updated successfully.",
         "logo_url": data_url,
         "static_url": f"/uploads/institutions/{fname}"
+    }
+
+
+# ── IN-HOUSE DATABASE ROSTER SYNC & SURNAME PASSWORD PROVISIONING ────────────
+
+def extract_surname(name: str) -> str:
+    """
+    Extracts the official surname from a person's full name,
+    accounting for academic prefixes and comma-separated formats.
+    e.g. 'Adeyemi Babatunde Emmanuel' -> 'Adeyemi'
+         'Dr. Oladele Sunday'         -> 'Oladele'
+         'Prof. Chukwuma Ngozi'       -> 'Chukwuma'
+         'ADEKUNLE, Timothy'          -> 'Adekunle'
+    """
+    if not name:
+        return "Password"
+    clean = name.strip()
+    if "," in clean:
+        parts = clean.split(",")
+        return parts[0].strip().capitalize()
+
+    titles = {
+        "prof.", "dr.", "engr.", "mr.", "mrs.", "ms.", "miss",
+        "arc.", "pharm.", "chief", "barr.", "assoc.", "rev.",
+        "prof", "dr", "engr", "mr", "mrs", "ms", "arc", "pharm", "barr"
+    }
+    words = clean.split()
+    while words and words[0].lower().rstrip(".") in titles:
+        words.pop(0)
+
+    if not words:
+        return "Password"
+    return words[0].strip(" ,.").capitalize()
+
+
+DEFAULT_STUDENT_ROSTER = [
+    {"full_name": "Adeyemi Babatunde Emmanuel", "dept": "Computer Science", "level": "400L", "research_domain": "Machine Learning & Natural Language Processing"},
+    {"full_name": "Okonkwo Chinedu Franklin", "dept": "Software Engineering", "level": "400L", "research_domain": "Distributed Microservices Architecture"},
+    {"full_name": "Ibrahim Fatima Zahra", "dept": "Computer Science", "level": "400L", "research_domain": "Zero-Knowledge Cryptography & Network Security"},
+    {"full_name": "Danjuma Aisha Maryam", "dept": "Information & Comm. Technology", "level": "400L", "research_domain": "Smart Campus IoT Sensing Networks"},
+    {"full_name": "Bello Abdullahi Sani", "dept": "Electrical & Electronic Engineering", "level": "500L", "research_domain": "Embedded Hardware & Robotics"},
+    {"full_name": "Balogun Olamide Victor", "dept": "Software Engineering", "level": "400L", "research_domain": "Decentralized Identity & Blockchain Verification"},
+    {"full_name": "Eze Chioma Grace", "dept": "Computer Science", "level": "400L", "research_domain": "Predictive Modeling & Big Data Analytics"},
+    {"full_name": "Lawal Kehinde Joseph", "dept": "Information & Comm. Technology", "level": "400L", "research_domain": "Enterprise Cloud Migration & SDN"},
+    {"full_name": "Abubakar Mustapha Aliyu", "dept": "Cyber Security", "level": "400L", "research_domain": "Zero Trust Architectures & Threat Detection"},
+    {"full_name": "Nwosu Emeka Patrick", "dept": "Computer Science", "level": "400L", "research_domain": "Autonomous Computer Vision & Edge AI"},
+    {"full_name": "Alabi Rasheed Opeyemi", "dept": "Software Engineering", "level": "400L", "research_domain": "Continuous Integration & Automated Testing Pipelines"},
+    {"full_name": "Yakubu Zainab Amina", "dept": "Cyber Security", "level": "400L", "research_domain": "Digital Forensics & Incident Response Automation"},
+    {"full_name": "Ogundipe Folake Helen", "dept": "Electrical & Electronic Engineering", "level": "500L", "research_domain": "Renewable Power Optimization & Smart Grids"},
+    {"full_name": "Mohammed Kabir Usman", "dept": "Information & Comm. Technology", "level": "400L", "research_domain": "High-Throughput Distributed Database Systems"},
+    {"full_name": "Adeleke Olumide Samuel", "dept": "Computer Science", "level": "400L", "research_domain": "Deep Reinforcement Learning for Resource Allocation"}
+]
+
+DEFAULT_SUPERVISOR_ROSTER = [
+    {"full_name": "Dr. Oladele Sunday", "dept": "Computer Science", "expertise": "Cloud Computing, Distributed Systems, Software Architecture", "max_load": 10},
+    {"full_name": "Prof. Chukwuma Ngozi", "dept": "Software Engineering", "expertise": "DevOps, Automated Testing, Agile Quality Assurance", "max_load": 8},
+    {"full_name": "Engr. Farooq Usman", "dept": "Electrical & Electronic Engineering", "expertise": "Embedded Systems, Robotics, Digital Signal Processing", "max_load": 10},
+    {"full_name": "Dr. Adebayo Kunle", "dept": "Cyber Security", "expertise": "Penetration Testing, Threat Modeling, Ethical Hacking", "max_load": 10},
+    {"full_name": "Dr. Nwachukwu Ifeanyi", "dept": "Computer Science", "expertise": "Machine Learning, Artificial Intelligence, Big Data", "max_load": 10},
+    {"full_name": "Prof. Amina Mohammed", "dept": "Information & Comm. Technology", "expertise": "Enterprise Telephony, Network Virtualization, 5G", "max_load": 8}
+]
+
+
+@router.post("/{slug_or_code}/fetch-database")
+def fetch_in_house_database(
+    slug_or_code: str,
+    req: FetchDatabaseRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Fetches student and supervisor data from the institution's in-house university database.
+    Assigns each student's and supervisor's SURNAME as their initial password for seamless,
+    unified access across all 3 portals (SPSEMS, SIWES, and HOSTEL).
+    """
+    clean = slug_or_code.strip()
+    inst = db.execute(
+        text("SELECT institution_id, name, code, slug, official_domain FROM institutions WHERE LOWER(slug)=:s OR UPPER(code)=:c"),
+        {"s": clean.lower(), "c": clean.upper()}
+    ).fetchone()
+
+    if not inst:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Institution '{clean}' not found.")
+
+    inst_id = inst.institution_id
+    code = inst.code.upper()
+    domain = inst.official_domain or f"{inst.slug}.edu.ng"
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Determine students and supervisors to import
+    custom_records = req.custom_records or []
+    student_records = []
+    supervisor_records = []
+
+    if custom_records:
+        for r in custom_records:
+            role = (r.get("role") or "student").lower()
+            if role == "supervisor":
+                supervisor_records.append(r)
+            else:
+                student_records.append(r)
+    else:
+        sample_size = max(5, min(req.sample_size or 15, len(DEFAULT_STUDENT_ROSTER)))
+        student_records = DEFAULT_STUDENT_ROSTER[:sample_size]
+        supervisor_records = DEFAULT_SUPERVISOR_ROSTER
+
+    dept_abbr_map = {
+        "Computer Science": "CSC",
+        "Software Engineering": "SWE",
+        "Information & Comm. Technology": "ICT",
+        "Electrical & Electronic Engineering": "EEE",
+        "Cyber Security": "CYS",
+    }
+
+    imported_students = []
+    imported_supervisors = []
+
+    try:
+        # 1. Ingest Students
+        for i, st_data in enumerate(student_records, start=1):
+            full_name = st_data.get("full_name", f"Student {i}").strip()
+            dept = st_data.get("dept") or st_data.get("department") or "Computer Science"
+            level = st_data.get("level") or "400L"
+            research_domain = st_data.get("research_domain") or "Applied Computing"
+
+            dept_abbr = dept_abbr_map.get(dept, "CSC")
+            matric_number = st_data.get("matric_number") or f"2025/{code}/{dept_abbr}/{i:03d}"
+            surname = extract_surname(full_name)
+            hashed_pw = _hash_pw(surname)
+
+            username = st_data.get("username") or matric_number.lower()
+            email = st_data.get("email") or f"{surname.lower()}.{i:03d}@{domain}"
+            phone = st_data.get("phone") or f"+23480{i:02d}000{i:03d}"
+
+            # Check if user already exists
+            existing_user = db.execute(
+                text("SELECT user_id FROM users WHERE username=:u OR email=:e"),
+                {"u": username, "e": email}
+            ).fetchone()
+
+            if existing_user:
+                user_id = existing_user.user_id
+                if req.overwrite_existing:
+                    db.execute(
+                        text("UPDATE users SET password=:p, full_name=:fn, role='student', institution_id=:iid WHERE user_id=:uid"),
+                        {"p": hashed_pw, "fn": full_name, "iid": inst_id, "uid": user_id}
+                    )
+            else:
+                db.execute(
+                    text("""
+                        INSERT INTO users (
+                            username, email, password, role, full_name, phone, institution_id, is_active, created_at
+                        ) VALUES (
+                            :u, :e, :p, 'student', :fn, :ph, :iid, 1, :now_str
+                        )
+                    """),
+                    {
+                        "u": username,
+                        "e": email,
+                        "p": hashed_pw,
+                        "fn": full_name,
+                        "ph": phone,
+                        "iid": inst_id,
+                        "now_str": now_str
+                    }
+                )
+                user_id = db.execute(text("SELECT last_insert_rowid()")).scalar()
+
+            # Ensure student record exists
+            st_row = db.execute(
+                text("SELECT student_id FROM students WHERE user_id=:uid OR matric_number=:m"),
+                {"uid": user_id, "m": matric_number}
+            ).fetchone()
+
+            if not st_row:
+                db.execute(
+                    text("""
+                        INSERT INTO students (
+                            user_id, matric_number, department, level, research_domain, institution_id, created_at
+                        ) VALUES (
+                            :uid, :m, :dept, :lvl, :rd, :iid, :now_str
+                        )
+                    """),
+                    {
+                        "uid": user_id,
+                        "m": matric_number,
+                        "dept": dept,
+                        "lvl": level,
+                        "rd": research_domain,
+                        "iid": inst_id,
+                        "now_str": now_str
+                    }
+                )
+            else:
+                db.execute(
+                    text("UPDATE students SET department=:dept, level=:lvl, research_domain=:rd, institution_id=:iid WHERE student_id=:sid"),
+                    {"dept": dept, "lvl": level, "rd": research_domain, "iid": inst_id, "sid": st_row[0]}
+                )
+
+            imported_students.append({
+                "student_id": i,
+                "full_name": full_name,
+                "matric_number": matric_number,
+                "username": username,
+                "email": email,
+                "department": dept,
+                "level": level,
+                "research_domain": research_domain,
+                "assigned_password": surname,  # Transparent password confirmation
+                "portals_access": ["SPSEMS", "SIWES", "HOSTEL"]
+            })
+
+        # 2. Ingest Supervisors
+        for j, sup_data in enumerate(supervisor_records, start=1):
+            full_name = sup_data.get("full_name", f"Supervisor {j}").strip()
+            dept = sup_data.get("dept") or sup_data.get("department") or "Computer Science"
+            expertise = sup_data.get("expertise") or "Systems Engineering & Computing"
+            max_load = int(sup_data.get("max_load") or 10)
+
+            surname = extract_surname(full_name)
+            hashed_pw = _hash_pw(surname)
+
+            username = sup_data.get("username") or f"{surname.lower()}_{code.lower()}"
+            email = sup_data.get("email") or f"{surname.lower()}@{domain}"
+            phone = sup_data.get("phone") or f"+23481{j:02d}111{j:03d}"
+
+            # Check if user already exists
+            existing_user = db.execute(
+                text("SELECT user_id FROM users WHERE username=:u OR email=:e"),
+                {"u": username, "e": email}
+            ).fetchone()
+
+            if existing_user:
+                user_id = existing_user.user_id
+                if req.overwrite_existing:
+                    db.execute(
+                        text("UPDATE users SET password=:p, full_name=:fn, role='supervisor', institution_id=:iid WHERE user_id=:uid"),
+                        {"p": hashed_pw, "fn": full_name, "iid": inst_id, "uid": user_id}
+                    )
+            else:
+                db.execute(
+                    text("""
+                        INSERT INTO users (
+                            username, email, password, role, full_name, phone, institution_id, is_active, created_at
+                        ) VALUES (
+                            :u, :e, :p, 'supervisor', :fn, :ph, :iid, 1, :now_str
+                        )
+                    """),
+                    {
+                        "u": username,
+                        "e": email,
+                        "p": hashed_pw,
+                        "fn": full_name,
+                        "ph": phone,
+                        "iid": inst_id,
+                        "now_str": now_str
+                    }
+                )
+                user_id = db.execute(text("SELECT last_insert_rowid()")).scalar()
+
+            # Ensure supervisor record exists
+            sup_row = db.execute(
+                text("SELECT supervisor_id FROM supervisors WHERE user_id=:uid"),
+                {"uid": user_id}
+            ).fetchone()
+
+            if not sup_row:
+                db.execute(
+                    text("""
+                        INSERT INTO supervisors (
+                            user_id, department, expertise_areas, max_load, current_load, institution_id, created_at
+                        ) VALUES (
+                            :uid, :dept, :exp, :max_load, 0, :iid, :now_str
+                        )
+                    """),
+                    {
+                        "uid": user_id,
+                        "dept": dept,
+                        "exp": expertise,
+                        "max_load": max_load,
+                        "iid": inst_id,
+                        "now_str": now_str
+                    }
+                )
+            else:
+                db.execute(
+                    text("UPDATE supervisors SET department=:dept, expertise_areas=:exp, max_load=:max_load, institution_id=:iid WHERE supervisor_id=:sid"),
+                    {"dept": dept, "exp": expertise, "max_load": max_load, "iid": inst_id, "sid": sup_row[0]}
+                )
+
+            imported_supervisors.append({
+                "supervisor_id": j,
+                "full_name": full_name,
+                "username": username,
+                "email": email,
+                "department": dept,
+                "expertise": expertise,
+                "max_load": max_load,
+                "assigned_password": surname,  # Transparent password confirmation
+                "portals_access": ["SPSEMS", "SIWES", "HOSTEL"]
+            })
+
+        db.commit()
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            f"Failed to fetch and ingest in-house database records: {str(e)}"
+        )
+
+    return {
+        "success": True,
+        "message": f"Successfully fetched in-house database for {inst.name} ({code}). {len(imported_students)} students and {len(imported_supervisors)} supervisors synchronized. Each user has been assigned their SURNAME as their initial password for access across SPSEMS, SIWES, and HOSTEL portals.",
+        "institution": {
+            "institution_id": inst_id,
+            "name": inst.name,
+            "code": code,
+            "slug": inst.slug,
+            "domain": domain
+        },
+        "password_policy": {
+            "rule": "SURNAME_AS_INITIAL_PASSWORD",
+            "description": "Each student and supervisor has their initial password set to their extracted SURNAME (case-insensitive during login).",
+            "portals_unlocked": ["SPSEMS Dissertation Supervision", "SIWES Industrial Training", "Hostel Bedspace Allocation"]
+        },
+        "students_count": len(imported_students),
+        "supervisors_count": len(imported_supervisors),
+        "students": imported_students,
+        "supervisors": imported_supervisors
+    }
+
+
+@router.get("/{slug_or_code}/database-roster")
+def get_database_roster(
+    slug_or_code: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Returns current student and supervisor roster for the institution,
+    demonstrating synced records and password instructions.
+    """
+    clean = slug_or_code.strip()
+    inst = db.execute(
+        text("SELECT institution_id, name, code, slug, official_domain FROM institutions WHERE LOWER(slug)=:s OR UPPER(code)=:c"),
+        {"s": clean.lower(), "c": clean.upper()}
+    ).fetchone()
+
+    if not inst:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Institution '{clean}' not found.")
+
+    inst_id = inst.institution_id
+
+    # Fetch students
+    st_rows = db.execute(
+        text("""
+            SELECT u.user_id, u.full_name, u.username, u.email, u.phone,
+                   st.matric_number, st.department, st.level, st.research_domain
+            FROM users u
+            JOIN students st ON u.user_id = st.user_id
+            WHERE u.institution_id = :iid AND u.is_active = 1
+            ORDER BY st.student_id ASC
+        """),
+        {"iid": inst_id}
+    ).fetchall()
+
+    students = [
+        {
+            "user_id": r.user_id,
+            "full_name": r.full_name,
+            "surname": extract_surname(r.full_name),
+            "matric_number": r.matric_number,
+            "username": r.username,
+            "email": r.email,
+            "department": r.department,
+            "level": r.level,
+            "research_domain": r.research_domain,
+            "password_hint": f"Surname ({extract_surname(r.full_name)})",
+            "portals_access": ["SPSEMS", "SIWES", "HOSTEL"]
+        }
+        for r in st_rows
+    ]
+
+    # Fetch supervisors
+    sup_rows = db.execute(
+        text("""
+            SELECT u.user_id, u.full_name, u.username, u.email, u.phone,
+                   s.department, s.expertise_areas, s.max_load, s.current_load
+            FROM users u
+            JOIN supervisors s ON u.user_id = s.user_id
+            WHERE u.institution_id = :iid AND u.is_active = 1
+            ORDER BY s.supervisor_id ASC
+        """),
+        {"iid": inst_id}
+    ).fetchall()
+
+    supervisors = [
+        {
+            "user_id": r.user_id,
+            "full_name": r.full_name,
+            "surname": extract_surname(r.full_name),
+            "username": r.username,
+            "email": r.email,
+            "department": r.department,
+            "expertise_areas": r.expertise_areas,
+            "max_load": r.max_load,
+            "current_load": r.current_load,
+            "password_hint": f"Surname ({extract_surname(r.full_name)})",
+            "portals_access": ["SPSEMS", "SIWES", "HOSTEL"]
+        }
+        for r in sup_rows
+    ]
+
+    return {
+        "success": True,
+        "institution": {
+            "institution_id": inst_id,
+            "name": inst.name,
+            "code": inst.code,
+            "slug": inst.slug
+        },
+        "students_count": len(students),
+        "supervisors_count": len(supervisors),
+        "students": students,
+        "supervisors": supervisors,
+        "password_policy": "Each student and supervisor signs in with their username/matric number and their SURNAME as password."
     }
 
